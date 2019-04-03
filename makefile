@@ -5,10 +5,10 @@
 # Set COMPRESSED to "YES" to create a compressed program
 # ----------------------------
 
-NAME        ?= DEMO
+NAME        ?= TDEFENSE
 COMPRESSED  ?= NO
 ICON        ?= iconc.png
-DESCRIPTION ?= "C SDK Demo"
+DESCRIPTION ?= "Reverse Tower Defense"
 
 # ----------------------------
 
