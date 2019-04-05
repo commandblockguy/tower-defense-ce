@@ -42,6 +42,19 @@ struct gameData {
 
 typedef uint8_t angle_t; // Angle where 256 = 360 degrees or 128 = 180 degrees
 
+typedef struct circle {
+	uint24_t x;
+	uint8_t y;
+	uint8_t radius;
+} circle_t;
+
+typedef struct lineSeg {
+	uint24_t x1;
+	uint8_t y1;
+	uint24_t x2;
+	uint8_t y2;
+} lineSeg_t;
+
 // Global vars
 
 extern struct gameData game;
@@ -49,6 +62,7 @@ extern pathPoint_t *path;
 
 extern uint16_t pathBufX[255];
 extern uint8_t pathBufY[255];
-extern char pathBuffErr[32];
+extern char pathBufErr[32];
+extern uint8_t bufSize;
 
 #endif

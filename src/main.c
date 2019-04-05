@@ -33,6 +33,7 @@ const uint8_t NUM_LIVES     = 25;
 const uint8_t NUM_TOWERS    = 16;
 const uint8_t CSR_SPEED     = 3;
 const uint8_t TOWER_DIST    = 48;
+const uint8_t CLICK_RADIUS  = 8;
 
 void main(void);
 void mainMenu(void);
@@ -126,8 +127,10 @@ int24_t play(void) {
     uint24_t csrX = LCD_WIDTH  / 2;
     uint8_t  csrY = LCD_HEIGHT / 2;
     static int i;
-    static uint8_t carryMode;
+    bool carry = false;
     static uint8_t selectedIndex;
+    static uint24_t carryOrigX;
+    static uint8_t carryOrigY;
 
     bool updatedPath = true; // True if the player has changed the path
 
@@ -187,6 +190,7 @@ int24_t play(void) {
         // Draw path
         if(game.status == PATH_EDIT) {
             // Draw the path buffer
+            drawPathBuffer();
         } else {
             drawPath();
         }
@@ -215,10 +219,113 @@ int24_t play(void) {
         if(csrY > 250)        csrY += LCD_HEIGHT; // hacky check for  overflow
         if(csrY > LCD_HEIGHT) csrY -= LCD_HEIGHT;
 
+        if(kb_IsDown(kb_KeyAlpha) && game.status == PATH_EDIT && !carry) {
+            static int index;
+            circle_t c;
+
+            // Make a circle around the cursor
+            c.x = csrX;
+            c.y = csrY;
+            c.radius = CLICK_RADIUS;
+
+            // Check which point we are over
+            for(index = 0; index < bufSize; index++) {
+                // Loop through all points until one is in the circle
+                if(ptInsideCirc(&c, pathBufX[index], pathBufY[index])) {
+                    // Select that index
+                    carryOrigX = pathBufX[index];
+                    carryOrigY = pathBufY[index];
+                    selectedIndex = index;
+                    carry = true;
+                    break;
+                }
+            }
+        }
+
+        if(kb_IsDown(kb_KeyDel) && game.status == PATH_EDIT && !carry) {
+            static int index;
+            circle_t c;
+
+            // Make a circle around the cursor
+            c.x = csrX;
+            c.y = csrY;
+            c.radius = CLICK_RADIUS;
+
+            // Check which point we are over
+            for(index = 0; index < bufSize; index++) {
+                // Loop through all points until one is in the circle
+                if(ptInsideCirc(&c, pathBufX[index], pathBufY[index])) {
+                    // Select that index
+                    memcpy(&pathBufX[index], &pathBufX[index+1], sizeof(pathBufX[0]) * (bufSize - index - 1));
+                    memcpy(&pathBufY[index], &pathBufY[index+1], sizeof(pathBufY[0]) * (bufSize - index - 1));
+                    bufSize--;
+                    break;
+                }
+            }
+        }
+
         if(kb_IsDown(kb_Key2nd) || kb_IsDown(kb_KeyEnter)) {
             // Click detected
 
-            // Check if we are over a tower
+            circle_t circ;
+            int i, j;
+
+            // Check mode
+            if(game.status == PATH_EDIT) {
+                if(carry) {
+                    // Try to drop the point
+                    // If the carried point is the start or end point, snap to the nearest edge
+                    // If position is valid, reset carry
+                    // Reset carry
+                    carry = false;
+                    // Skip the rest of the click check
+                    // I know, bad style or whatever
+                    goto clickSkip;
+                }
+
+                // Check if buffer would overflow
+                if(bufSize >= 250) {
+                    // TODO: display some message to the player
+                } else {
+                    // Make a circle around the cursor
+                    circ.x = csrX;
+                    circ.y = csrY;
+                    circ.radius = CLICK_RADIUS;
+
+                    // Check if we are over a line by iterating through all
+                    // Not really a better way to do this AFAIK
+                    for(i = 0; i < bufSize - 1; i++) {
+                        // Get the lineSeg
+                        lineSeg_t ls;
+
+                        ls.x1 = pathBufX[i];
+                        ls.y1 = pathBufY[i];
+                        ls.x2 = pathBufX[i+1];
+                        ls.y2 = pathBufY[i+1];
+
+                        // Check if that circle overlaps the line
+                        if(!circCollidesSeg(&circ, &ls, NULL)) continue;
+
+                        // Select the index of the new point we are about to make
+                        i++;
+
+                        // Move all points down by one
+                        for(j = bufSize; j > i; j--) {
+                            pathBufX[j] = pathBufX[j - 1];
+                            pathBufY[j] = pathBufY[j - 1];
+                        }
+
+                        // Increment the buffer size
+                        bufSize++;
+                        // Set the selected point and selection mode
+                        selectedIndex = i;
+                        carry = true;
+                        break;
+                    }
+                }
+            } else {
+                // Check if we are over a tower
+            }
 
             // Check if we are over a Fn button
             if(csrY > LCD_HEIGHT - F_BTN_HEIGHT) {
@@ -227,6 +334,19 @@ int24_t play(void) {
                 // Update the fKey pressed
                 fKey = 1 << (4 - btn);
             }
+
+            clickSkip:
+            // Wait to release 2nd
+            do {
+                kb_Scan();
+            } while(kb_IsDown(kb_Key2nd));
+
+        }
+
+        if(game.status == PATH_EDIT && carry) {
+            // If carrying a point, move the point to the cursor position
+            pathBufX[selectedIndex] = csrX;
+            pathBufY[selectedIndex] = csrY;
         }
 
         switch(game.status) {
@@ -289,7 +409,7 @@ int24_t play(void) {
         if(fKey) {
             do {
                 kb_Scan();
-            } while(kb_Data[1] || kb_IsDown(kb_Key2nd));
+            } while(kb_Data[1]);
         }
     }
     return game.score;
@@ -325,11 +445,11 @@ void reverseBuffer(void) {
         tempX = pathBufX[i];
         tempY = pathBufY[i];
     
-        pathBufX[i] = pathBufX[bufSize - i];
-        pathBufY[i] = pathBufY[bufSize - i];
+        pathBufX[i] = pathBufX[bufSize - i - 1];
+        pathBufY[i] = pathBufY[bufSize - i - 1];
 
-        pathBufX[bufSize - i] = tempX;
-        pathBufY[bufSize - i] = tempY;
+        pathBufX[bufSize - i - 1] = tempX;
+        pathBufY[bufSize - i - 1] = tempY;
     }
 }
 
@@ -339,6 +459,8 @@ int8_t updatePath(void) {
     uint24_t lastX = pathBufX[0];
     uint8_t lastY = pathBufY[0];
     static int i;
+
+    // If an endpoint is not on the edge of the playing area, extend that line out until it is
 
     // Verify that the path is valid, e.g.
     //  no crossings - maybe enforce this while editing?

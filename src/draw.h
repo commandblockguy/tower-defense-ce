@@ -14,5 +14,6 @@
 void drawTowers(uint24_t csrX, uint8_t csrY);
 void drawPath(void);
 void drawUI(void);
+void drawPathBuffer(void);
 
 #endif

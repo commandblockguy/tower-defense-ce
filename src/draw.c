@@ -34,7 +34,13 @@ void drawPathBuffer(void) {
     // Loop through all lines
     for(i = 0; i < bufSize - 1; i++) {
     	// Check if there is an error
-    	if()
+    	if(pathBufErr[i / 8] & (1 << (i % 8))) {
+    		gfx_SetColor(RED);
+    		gfx_Line(pathBufX[i], pathBufY[i], pathBufX[i+1], pathBufY[i+1]);
+    		gfx_SetColor(PATH_COLOR);
+    	} else {
+    		gfx_Line(pathBufX[i], pathBufY[i], pathBufX[i+1], pathBufY[i+1]);
+    	}
     }
 }
 
@@ -43,6 +49,8 @@ void drawUI(void) {
 
     gfx_SetColor(BLACK);
     gfx_SetTextFGColor(BLACK);
+
+    gfx_HorizLine(0, LCD_HEIGHT - F_BTN_HEIGHT, LCD_WIDTH);
 
     switch(game.status) {
         case(PRE_WAVE):
@@ -70,7 +78,7 @@ void drawButton(uint8_t posMin, uint8_t posMax, char *str) {
     uint24_t rightEdge = (posMax + 1) * (LCD_WIDTH / 5);
     uint24_t textX;
     // Draw the line on top
-    gfx_HorizLine(leftEdge, LCD_HEIGHT - F_BTN_HEIGHT, rightEdge - leftEdge);
+    //gfx_HorizLine(leftEdge, LCD_HEIGHT - F_BTN_HEIGHT, rightEdge - leftEdge);
     //Draw the lines on either side
     gfx_VertLine( leftEdge, LCD_HEIGHT - F_BTN_HEIGHT, F_BTN_HEIGHT);
     gfx_VertLine(rightEdge, LCD_HEIGHT - F_BTN_HEIGHT, F_BTN_HEIGHT);
