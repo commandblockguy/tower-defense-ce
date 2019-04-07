@@ -13,6 +13,9 @@
 
 #define F_BTN_HEIGHT 16
 #define TEXT_HEIGHT  8
+#define CLICK_RADIUS 8
+#define NUM_TOWERS   16
+#define TOWER_RADIUS 8
 
 enum status {
 	PRE_WAVE,
@@ -26,6 +29,34 @@ typedef struct {
     uint8_t posY;
     uint24_t distance; // Distance from the start point.
 } pathPoint_t;
+
+enum {
+    STANDARD,
+    SNIPER,
+    BURST,
+    MAGE // may not implement this one, idk
+};
+typedef uint8_t archetype_t;
+
+struct pathRange {
+    uint24_t dis1;
+    uint24_t dis2;
+};
+
+typedef struct {
+    uint24_t posX;
+    uint8_t posY;
+
+    struct pathRange *ranges;
+    uint24_t xp; // This does not get reset with each level
+    uint8_t level;
+    uint8_t spentLevels; // Number of levels which have been used up already
+
+    archetype_t archetype; // Basic tower type
+    uint24_t upgrades; // Upgrades bitmap
+    uint24_t range;
+    uint24_t maxCooldown; // Number that cooldown is set to on firing
+} tower_t;
 
 // Data that will be included in the save
 // Lines and enemies are also included but handled differently
@@ -50,8 +81,8 @@ typedef struct circle {
 
 typedef struct lineSeg {
 	uint24_t x1;
-	uint8_t y1;
 	uint24_t x2;
+	uint8_t y1;
 	uint8_t y2;
 } lineSeg_t;
 
@@ -64,5 +95,7 @@ extern uint16_t pathBufX[255];
 extern uint8_t pathBufY[255];
 extern char pathBufErr[32];
 extern uint8_t bufSize;
+
+extern tower_t towers[NUM_TOWERS];
 
 #endif

@@ -30,10 +30,8 @@
 #include "util.h"
 
 const uint8_t NUM_LIVES     = 25;
-const uint8_t NUM_TOWERS    = 16;
 const uint8_t CSR_SPEED     = 3;
 const uint8_t TOWER_DIST    = 48;
-const uint8_t CLICK_RADIUS  = 8;
 
 void main(void);
 void mainMenu(void);
@@ -43,34 +41,6 @@ void resetPathBuffer(void);
 int8_t updatePath(void);
 void initBuffer(void);
 void reverseBuffer(void);
-
-enum {
-    STANDARD,
-    SNIPER,
-    BURST,
-    MAGE // may not implement this one, idk
-};
-typedef uint8_t archetype_t;
-
-struct pathRange {
-    uint24_t dis1;
-    uint24_t dis2;
-};
-
-typedef struct {
-    uint24_t posX;
-    uint8_t posY;
-
-    struct pathRange *ranges;
-    uint24_t xp; // This does not get reset with each level
-    uint8_t level;
-    uint8_t spentLevels; // Number of levels which have been used up already
-
-    archetype_t archetype; // Basic tower type
-    uint24_t upgrades; // Upgrades bitmap
-    uint24_t range;
-    uint24_t maxCooldown; // Number that cooldown is set to on firing
-} tower_t;
 
 typedef struct {
     uint24_t position;
@@ -88,6 +58,9 @@ pathPoint_t *path; // Path rendering is done with this
 struct gameData game; // Game global
 
 void main(void) {
+    // Seed the RNG
+    srand(rtc_Time());
+
     // Set up graphics
     gfx_Begin();
     gfx_SetDrawBuffer();
@@ -135,13 +108,38 @@ int24_t play(void) {
     bool updatedPath = true; // True if the player has changed the path
 
     // Initialize towers
+    // There are more efficient ways to make a Poisson-disc distribution, but this saves on code size.
+    // I think.
     for(i = 0; i < NUM_TOWERS; i++) {
         // Do something
-        // TODO: ensure that towers are not to close to each other
-        // Maybe divide the screen into regions and then put one tower in each region?
-        towers[i].posX = randInt(0, 320);
-        towers[i].posY = randInt(0, 240);
+        uint8_t candidate;
+        uint24_t max = 0;
+        uint24_t maxX = 0;
+        uint8_t maxY = 0;
+        // Pick the candidate furthest from the closest other tower
+        for(candidate = 0; candidate < 5; candidate++) {
+            uint8_t j;
+            uint24_t minDist = -1;
+            uint24_t newX = randInt(TOWER_RADIUS, LCD_WIDTH - TOWER_RADIUS);
+            uint8_t newY = randInt(TOWER_RADIUS, LCD_HEIGHT - F_BTN_HEIGHT - TOWER_RADIUS);
+            // Find the distance to the closest tower
+            for(j = 0; j < i; j++) {
+                uint24_t dist = distBetween(towers[j].posX, towers[j].posY, newX, newY);
+                if(dist < minDist) {
+                    minDist = dist;
+                }
+            }
+            // If this candidate is better than the previous best, update accordingly
+            if(minDist > max) {
+                max = minDist;
+                maxX = newX;
+                maxY = newY;
+            }
+        }
+        towers[i].posX = maxX;
+        towers[i].posY = maxY;
     }
+    // On second thought bridson's doesn't seem that much more complicated. Whatever.
 
     // Reset game variables
     game.lives = NUM_LIVES;
@@ -172,8 +170,10 @@ int24_t play(void) {
 
                 // Free path
                 // Free enemies
+                return -1;
             }
-            return -1;
+            // Wait for key to be released
+            while(kb_IsDown(kb_KeyClear)) kb_Scan();
         }
 
         if(game.status == WAVE) {
@@ -181,17 +181,20 @@ int24_t play(void) {
 
             // If all enemies dead
             //  Free enemies
+            //  Set status back to PRE_WAVE
         }
 
         // Draw background
         gfx_FillScreen(BACKGROUND_COLOR);
-        // Draw towers
-        drawTowers(csrX, csrY);
         // Draw path
         if(game.status == PATH_EDIT) {
+            // Don't enlarge towers if we are editing paths
+            drawTowers(-1, -1);
             // Draw the path buffer
             drawPathBuffer();
         } else {
+            drawTowers(csrX, csrY);
+            // Draw the regular path
             drawPath();
         }
         // Draw UI
@@ -274,8 +277,12 @@ int24_t play(void) {
             if(game.status == PATH_EDIT) {
                 if(carry) {
                     // Try to drop the point
-                    // If the carried point is the start or end point, snap to the nearest edge
                     // If position is valid, reset carry
+                    if(selectedIndex == 0 || selectedIndex == bufSize + 1) {
+                        // If the carried point is the start or end point, it should be on an edge
+                    } else {
+                        // Otherwise, it should be within the area of the screen
+                    }
                     // Reset carry
                     carry = false;
                     // Skip the rest of the click check
@@ -347,6 +354,9 @@ int24_t play(void) {
             // If carrying a point, move the point to the cursor position
             pathBufX[selectedIndex] = csrX;
             pathBufY[selectedIndex] = csrY;
+            if(selectedIndex == 0 || selectedIndex == bufSize + 1) {
+                // If the carried point is the start or end point, snap to the nearest edge
+            }
         }
 
         switch(game.status) {
