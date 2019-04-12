@@ -16,4 +16,9 @@ void drawPath(void);
 void drawUI(void);
 void drawPathBuffer(void);
 
+// Menu functions
+// TODO: move to own file?
+void mainMenu(void);
+void highScores(void);
+
 #endif

@@ -28,36 +28,31 @@
 #include "gfx/gfx_group.h"
 #include "draw.h"
 #include "util.h"
+#include "tower.h"
+#include "enemy.h"
 
 const uint8_t NUM_LIVES     = 25;
 const uint8_t CSR_SPEED     = 3;
 const uint8_t TOWER_DIST    = 48;
+const uint24_t XP_DIST      = 100;
+const uint8_t BASE_XP       = 3;
 
 void main(void);
-void mainMenu(void);
-void highScores(void);
 int24_t play(void);
-void resetPathBuffer(void);
-int8_t updatePath(void);
-void initBuffer(void);
-void reverseBuffer(void);
+void saveAppvar(void);
 
-typedef struct {
-    uint24_t position;
-    uint8_t health;
-} enemy_t;
-
-tower_t towers[NUM_TOWERS];
-enemy_t *enemies; // This is dynamically allocated at the beginning of each level
-uint16_t pathBufX[255]; // These are used when editing the path
-uint8_t pathBufY[255];
-char pathBufErr[32]; // Each bit corresponds to whether the segment following that point has an error
-uint8_t bufSize = 0; // Number of elements in the path buffer
-pathPoint_t *path; // Path rendering is done with this
+extern tower_t towers[NUM_TOWERS];
+extern enemy_t *enemies; // This is dynamically allocated at the beginning of each level
+extern uint16_t pathBufX[255]; // These are used when editing the path
+extern uint8_t pathBufY[255];
+extern char pathBufErr[32]; // Each bit corresponds to whether the segment following that point has an error
+extern uint8_t bufSize; // Number of elements in the path buffer
+extern pathPoint_t *path; // Path rendering is done with this
 
 struct gameData game; // Game global
 
 void main(void) {
+    dbg_sprintf(dbgout, "\n\nProgram Started\n");
     // Seed the RNG
     srand(rtc_Time());
 
@@ -72,22 +67,6 @@ void main(void) {
     gfx_End();
 }
 
-void mainMenu(void) {
-    // do menu stuff
-    // check if there is a game to resume
-    /* Options:
-        Resume
-        New Game
-        High Scores
-        Exit
-    */
-    play(); //temp
-}
-
-void highScores(void) {
-    // Display high scores
-}
-
 // Controls for path editing:
 //  Press 2nd over a line to select it
 //   Press 2nd over another location to add a point there, "bending" the line
@@ -99,47 +78,15 @@ int24_t play(void) {
     // Actual game stuff
     uint24_t csrX = LCD_WIDTH  / 2;
     uint8_t  csrY = LCD_HEIGHT / 2;
-    static int i;
+    int i;
     bool carry = false;
-    static uint8_t selectedIndex;
-    static uint24_t carryOrigX;
-    static uint8_t carryOrigY;
+    uint8_t selectedIndex = 0;
+    uint24_t carryOrigX;
+    uint8_t carryOrigY;
 
     bool updatedPath = true; // True if the player has changed the path
 
-    // Initialize towers
-    // There are more efficient ways to make a Poisson-disc distribution, but this saves on code size.
-    // I think.
-    for(i = 0; i < NUM_TOWERS; i++) {
-        // Do something
-        uint8_t candidate;
-        uint24_t max = 0;
-        uint24_t maxX = 0;
-        uint8_t maxY = 0;
-        // Pick the candidate furthest from the closest other tower
-        for(candidate = 0; candidate < 5; candidate++) {
-            uint8_t j;
-            uint24_t minDist = -1;
-            uint24_t newX = randInt(TOWER_RADIUS, LCD_WIDTH - TOWER_RADIUS);
-            uint8_t newY = randInt(TOWER_RADIUS, LCD_HEIGHT - F_BTN_HEIGHT - TOWER_RADIUS);
-            // Find the distance to the closest tower
-            for(j = 0; j < i; j++) {
-                uint24_t dist = distBetween(towers[j].posX, towers[j].posY, newX, newY);
-                if(dist < minDist) {
-                    minDist = dist;
-                }
-            }
-            // If this candidate is better than the previous best, update accordingly
-            if(minDist > max) {
-                max = minDist;
-                maxX = newX;
-                maxY = newY;
-            }
-        }
-        towers[i].posX = maxX;
-        towers[i].posY = maxY;
-    }
-    // On second thought bridson's doesn't seem that much more complicated. Whatever.
+    initTowers();
 
     // Reset game variables
     game.lives = NUM_LIVES;
@@ -164,12 +111,7 @@ int24_t play(void) {
                 // Discard path without saving
                 game.status = PRE_WAVE;
             } else {
-                // Save game struct to an appvar
-                // Save path
-                // Save enemies
-
-                // Free path
-                // Free enemies
+                saveAppvar();
                 return -1;
             }
             // Wait for key to be released
@@ -177,7 +119,7 @@ int24_t play(void) {
         }
 
         if(game.status == WAVE) {
-            // Handle physics stuff
+            //TODO: Handle physics stuff
 
             // If all enemies dead
             //  Free enemies
@@ -223,7 +165,7 @@ int24_t play(void) {
         if(csrY > LCD_HEIGHT) csrY -= LCD_HEIGHT;
 
         if(kb_IsDown(kb_KeyAlpha) && game.status == PATH_EDIT && !carry) {
-            static int index;
+            int index;
             circle_t c;
 
             // Make a circle around the cursor
@@ -246,7 +188,7 @@ int24_t play(void) {
         }
 
         if(kb_IsDown(kb_KeyDel) && game.status == PATH_EDIT && !carry) {
-            static int index;
+            int index;
             circle_t c;
 
             // Make a circle around the cursor
@@ -261,10 +203,13 @@ int24_t play(void) {
                     // Select that index
                     memcpy(&pathBufX[index], &pathBufX[index+1], sizeof(pathBufX[0]) * (bufSize - index - 1));
                     memcpy(&pathBufY[index], &pathBufY[index+1], sizeof(pathBufY[0]) * (bufSize - index - 1));
+                    //TODO: shift all the error checks over by a bit
                     bufSize--;
                     break;
                 }
             }
+            //TODO: Check if the newly created line and its adjacent points are valid
+            // If not, set error bits
         }
 
         if(kb_IsDown(kb_Key2nd) || kb_IsDown(kb_KeyEnter)) {
@@ -277,7 +222,7 @@ int24_t play(void) {
             if(game.status == PATH_EDIT) {
                 if(carry) {
                     // Try to drop the point
-                    // If position is valid, reset carry
+                    //TODO: If position is valid, reset carry
                     if(selectedIndex == 0 || selectedIndex == bufSize + 1) {
                         // If the carried point is the start or end point, it should be on an edge
                     } else {
@@ -285,6 +230,8 @@ int24_t play(void) {
                     }
                     // Reset carry
                     carry = false;
+                    //TODO: Check if the point, the two adjacent lines, and the two adjacent points are still valid
+                    // If not, set the error bits
                     // Skip the rest of the click check
                     // I know, bad style or whatever
                     goto clickSkip;
@@ -321,6 +268,7 @@ int24_t play(void) {
                             pathBufX[j] = pathBufX[j - 1];
                             pathBufY[j] = pathBufY[j - 1];
                         }
+                        // TODO: shift all error bits over by one
 
                         // Increment the buffer size
                         bufSize++;
@@ -331,7 +279,7 @@ int24_t play(void) {
                     }
                 }
             } else {
-                // Check if we are over a tower
+                //TODO: Check if we are over a tower
             }
 
             // Check if we are over a Fn button
@@ -346,7 +294,7 @@ int24_t play(void) {
             // Wait to release 2nd
             do {
                 kb_Scan();
-            } while(kb_IsDown(kb_Key2nd));
+            } while(kb_IsDown(kb_Key2nd) || kb_IsDown(kb_KeyEnter));
 
         }
 
@@ -355,7 +303,7 @@ int24_t play(void) {
             pathBufX[selectedIndex] = csrX;
             pathBufY[selectedIndex] = csrY;
             if(selectedIndex == 0 || selectedIndex == bufSize + 1) {
-                // If the carried point is the start or end point, snap to the nearest edge
+                //TODO: If the carried point is the start or end point, snap to the nearest edge
             }
         }
 
@@ -364,14 +312,18 @@ int24_t play(void) {
                 if(fKey == kb_Trace || fKey == kb_Graph) {
                     // Start the wave
                     if(updatedPath) {
+                        int i;
                         updatedPath = false;
-                        // Check if the path is valid
-                        //  If not, inform the user of this
+
                         // Recalculate tower ranges
+                        for(i = 0; i < NUM_TOWERS; i++) {
+                            calcTowerRanges(&towers[i]);
+                        }
                         // Compute XP amount
+                        game.xpAmt = BASE_XP + path[game.numPathPoints].distance / XP_DIST;
                     }
 
-                    // Spawn enemies
+                    //TODO: Spawn enemies
 
                     game.status = WAVE;
                 }
@@ -416,6 +368,7 @@ int24_t play(void) {
         }
         
 
+        // Wait for the held fKey to be released
         if(fKey) {
             do {
                 kb_Scan();
@@ -425,77 +378,23 @@ int24_t play(void) {
     return game.score;
 }
 
-void resetPathBuffer(void) {
-    // Set path length to 2
-    bufSize = 2;
-    // Set points
-    pathBufX[0] = LCD_WIDTH / 2;
-    pathBufY[0] = LCD_HEIGHT - F_BTN_HEIGHT;
+// TODO: implement
+void saveAppvar(void) {
+    // Save game struct to an appvar
 
-    pathBufX[1] = LCD_WIDTH / 2;
-    pathBufY[1] = 0;
+    // Save path
+    // Save enemies
+
+    // Free path
+    // Free enemies
 }
 
-void initBuffer(void) {
-    // Copy the contents of the path into the buffer
-    static int i;
-    for(i = 0; i < game.numPathPoints; i++) {
-        pathBufX[i] = path[i].posX;
-        pathBufY[i] = path[i].posY;
-    }
+void calcTowerStats(tower_t *tower) {
+    // TODO: compute range, reload time, etc. based on upgrades
+    // TODO: temp
+    tower->range = 25;
 }
 
-void reverseBuffer(void) {
-    // Reverse the direction of the path buffer
-    static int i;
-    for(i = 0; i < bufSize / 2; i++) {
-        static uint24_t tempX;
-        static uint8_t tempY;
+void towerEditMenu(tower_t *tower) {
 
-        tempX = pathBufX[i];
-        tempY = pathBufY[i];
-    
-        pathBufX[i] = pathBufX[bufSize - i - 1];
-        pathBufY[i] = pathBufY[bufSize - i - 1];
-
-        pathBufX[bufSize - i - 1] = tempX;
-        pathBufY[bufSize - i - 1] = tempY;
-    }
-}
-
-// Move the contents of the path buffer to the actual path
-int8_t updatePath(void) {
-    uint24_t distance = 0;
-    uint24_t lastX = pathBufX[0];
-    uint8_t lastY = pathBufY[0];
-    static int i;
-
-    // If an endpoint is not on the edge of the playing area, extend that line out until it is
-
-    // Verify that the path is valid, e.g.
-    //  no crossings - maybe enforce this while editing?
-    //  no sharp angles (>90)
-    //  minimum line length (angle (in circleints) / 8)
-
-    // These conditions should be shown using red lines in the editor
-
-    // If invalid, return a positive number
-
-    // Handle memory stuff
-    free(path);
-    path = malloc(sizeof(path[0]) * bufSize);
-
-    game.numPathPoints = bufSize;
-
-    // Loop through each point
-    for(i = 0; i < bufSize; i++) {
-        // Update the distance
-        distance += distBetween(pathBufX[i], pathBufY[i], lastX, lastY);
-        path[i].distance = distance;
-        // Set the x and y values of the point
-        lastX = path[i].posX = pathBufX[i];
-        lastY = path[i].posY = pathBufY[i];
-    }
-
-    return 0;
 }

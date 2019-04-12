@@ -14,67 +14,67 @@
 #include "globals.h"
 #include "util.h"
 
+// Various draw and menu functions
+// TODO: rename to graphics.c?
+
 void drawButton(uint8_t posMin, uint8_t posMax, char *str);
-void drawTower(uint8_t index, uint8_t scale);
+void drawTower(tower_t *tower, uint8_t scale, bool range);
+
+// from main.c
+int24_t play(void);
+
+// TODO: add some sort of fancy background
 
 void drawTowers(uint24_t csrX, uint8_t csrY) {
     // Loop through all towers
     int i;
     for(i = 0; i < NUM_TOWERS; i++) {
     	if(csrX == -1) {
-    		drawTower(i, 64);
+    		drawTower(&towers[i], 64, false);
     		// Skip the distance check if it's not necessary
     		continue;
     	}
     	// Enlarge the tower if the cursor is close enough
     	if(distBetween(towers[i].posX, towers[i].posY, csrX, csrY) < TOWER_RADIUS + CLICK_RADIUS) {
-    		drawTower(i, 128);
+    		drawTower(&towers[i], 128, true);
     	} else {
-    		drawTower(i, 64);
+    		drawTower(&towers[i], 64, false);
     	}
     }
 }
 
 // Uses the same scale as gfx_ScaledSprite
-void drawTower(uint8_t index, uint8_t scale) {
-	// TODO: rewrite
+// Range: true if the tower range should be displayed
+void drawTower(tower_t *tower, uint8_t scale, bool range) {
+	// TODO: rewrite using the actual sprites
 	gfx_SetColor(RED);
-	gfx_Circle(towers[index].posX, towers[index].posY, scale / 8);
+	gfx_Circle(tower->posX, tower->posY, scale / 8);
+
+	// Draw the tower range
+	if(range) {
+		gfx_SetColor(RED);
+		gfx_Circle(tower->posX, tower->posY, tower->range);
+	}
 }
 
 void drawPath(void) {
-	//temp
-	//circle_t c;
     // Loop through all path points
     int i;
 
-    //c.radius = 25;
-    //c.x = LCD_WIDTH / 2;
-    //c.y = LCD_HEIGHT / 2;
-
     gfx_SetColor(PATH_COLOR);
     for(i = 1; i < game.numPathPoints; i++) {
-    	//lineSeg_t ls1, ls2;
         gfx_Line(path[i].posX, path[i].posY, path[i - 1].posX, path[i - 1].posY);
-        /*ls1.x1 = path[i].posX;
-        ls1.y1 = path[i].posY;
-        ls1.x2 = path[i-1].posX;
-        ls1.y2 = path[i-1].posY;
-        if(circCollidesSeg(&c, &ls1, &ls2)) {
-        	gfx_SetColor(RED);
-        	gfx_Line(ls2.x1, ls2.y1, ls2.x2, ls2.y2);
-        	gfx_SetColor(PATH_COLOR);
-        }*/
     }
 }
 
 void drawPathBuffer(void) {
-    static int i;
+    int i;
     gfx_SetColor(PATH_COLOR);
     // Loop through all lines
     for(i = 0; i < bufSize - 1; i++) {
         // Check if there is an error
         if(pathBufErr[i / 8] & (1 << (i % 8))) {
+        	// Draw in red if there is an error
             gfx_SetColor(RED);
             gfx_Line(pathBufX[i], pathBufY[i], pathBufX[i+1], pathBufY[i+1]);
             gfx_SetColor(PATH_COLOR);
@@ -86,6 +86,9 @@ void drawPathBuffer(void) {
 
 void drawUI(void) {
     // Draw the F buttons
+
+    // Maybe I should generalize this so that each button has a function that is called when it
+    // is pressed, and an array is read instead of a switch/case and function calls to make the UI 
 
     gfx_SetColor(BLACK);
     gfx_SetTextFGColor(BLACK);
@@ -104,6 +107,7 @@ void drawUI(void) {
             drawButton(4, 4, "Pause");
             break;
         case(PATH_EDIT):
+            drawButton(0, 0, "Help");
             drawButton(1, 1, "Reverse");
             drawButton(2, 2, "Clear");
             drawButton(3, 3, "Cancel");
@@ -117,7 +121,7 @@ void drawButton(uint8_t posMin, uint8_t posMax, char *str) {
     uint24_t leftEdge = posMin * (LCD_WIDTH / 5);
     uint24_t rightEdge = (posMax + 1) * (LCD_WIDTH / 5);
     uint24_t textX;
-    // Draw the line on top
+    // Draw the line on top //TODO: remove
     //gfx_HorizLine(leftEdge, LCD_HEIGHT - F_BTN_HEIGHT, rightEdge - leftEdge);
     //Draw the lines on either side
     gfx_VertLine( leftEdge, LCD_HEIGHT - F_BTN_HEIGHT, F_BTN_HEIGHT);
@@ -127,4 +131,31 @@ void drawButton(uint8_t posMin, uint8_t posMax, char *str) {
     textX = (leftEdge + rightEdge - gfx_GetStringWidth(str)) / 2 + 1;
     gfx_PrintStringXY(str, textX, LCD_HEIGHT - (F_BTN_HEIGHT + TEXT_HEIGHT) / 2);
 
+}
+
+void mainMenu(void) {
+    // TODO: do menu stuff
+    // check if there is a game to resume
+
+    // Menu loop
+    // Render fancy menu background
+    // Handle keyboard inputs
+    // Draw the options
+
+    /* Options:
+        Resume
+        New Game
+        High Scores
+        Exit
+    */
+    play(); //temp
+}
+
+void highScores(void) {
+    //TODO: Display high scores
+
+    // Open high score appvar
+    // Read list of scores
+    // Display names
+    // Wait for keypress
 }
