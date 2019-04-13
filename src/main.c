@@ -30,6 +30,7 @@
 #include "util.h"
 #include "tower.h"
 #include "enemy.h"
+#include "physics.h"
 
 const uint8_t NUM_LIVES     = 25;
 const uint8_t CSR_SPEED     = 3;
@@ -41,8 +42,6 @@ void main(void);
 int24_t play(void);
 void saveAppvar(void);
 
-extern tower_t towers[NUM_TOWERS];
-extern enemy_t *enemies; // This is dynamically allocated at the beginning of each level
 extern uint16_t pathBufX[255]; // These are used when editing the path
 extern uint8_t pathBufY[255];
 extern char pathBufErr[32]; // Each bit corresponds to whether the segment following that point has an error
@@ -50,6 +49,10 @@ extern uint8_t bufSize; // Number of elements in the path buffer
 extern pathPoint_t *path; // Path rendering is done with this
 
 struct gameData game; // Game global
+
+// Cursor position
+uint24_t csrX = LCD_WIDTH  / 2;
+uint8_t  csrY = LCD_HEIGHT / 2;
 
 void main(void) {
     dbg_sprintf(dbgout, "\n\nProgram Started\n");
@@ -76,13 +79,12 @@ void main(void) {
 // Returns the score, or -1 if exiting due to clear being pressed
 int24_t play(void) {
     // Actual game stuff
-    uint24_t csrX = LCD_WIDTH  / 2;
-    uint8_t  csrY = LCD_HEIGHT / 2;
     int i;
     bool carry = false;
     uint8_t selectedIndex = 0;
     uint24_t carryOrigX;
     uint8_t carryOrigY;
+    uint24_t ticks = 0;
 
     bool updatedPath = true; // True if the player has changed the path
 
@@ -119,11 +121,19 @@ int24_t play(void) {
         }
 
         if(game.status == WAVE) {
-            //TODO: Handle physics stuff
-
-            // If all enemies dead
-            //  Free enemies
-            //  Set status back to PRE_WAVE
+            uint8_t tries;
+            // Run physics stuff until we are caught up
+            // This will overflow after 73 minutes in a round, if my calculations are correct
+            for(tries = 0; ONE_SECOND * ticks < TPS * timer_1_Upper && tries < 10; tries++) {
+                processPhysics();
+                // Increment the number of ticks that have elapsed
+                ticks++;
+            }
+            if(tries >= 10) {
+                // If this takes more than 10 tries we will assume that we are running behind
+                // TODO: handle this somehow
+                dbg_sprintf(dbgerr, "Game is running behind!\n");
+            }
         }
 
         // Draw background
@@ -139,6 +149,8 @@ int24_t play(void) {
             // Draw the regular path
             drawPath();
         }
+        // TODO: draw enemies
+        drawEnemies();
         // Draw UI
         drawUI();
         // Draw cursor
@@ -279,7 +291,8 @@ int24_t play(void) {
                     }
                 }
             } else {
-                //TODO: Check if we are over a tower
+                // TODO: Check if we are over a tower
+                //
             }
 
             // Check if we are over a Fn button
@@ -319,11 +332,22 @@ int24_t play(void) {
                         for(i = 0; i < NUM_TOWERS; i++) {
                             calcTowerRanges(&towers[i]);
                         }
+
                         // Compute XP amount
                         game.xpAmt = BASE_XP + path[game.numPathPoints].distance / XP_DIST;
                     }
 
-                    //TODO: Spawn enemies
+                    spawnEnemies();
+
+                    // Reset enemy progression
+                    game.enemyOffset.combined = 0;
+
+                    // Setup the main timer, which is used for calculating how many times to run the physics
+                    timer_Control = TIMER1_DISABLE;
+                    timer_1_Counter = 0;
+                    timer_Control = TIMER1_ENABLE | TIMER1_32K | TIMER1_UP;
+
+                    ticks = 0;
 
                     game.status = WAVE;
                 }
@@ -336,7 +360,16 @@ int24_t play(void) {
                 }
                 break;
             case(PAUSED):
-                if(fKey == kb_Graph) game.status = WAVE;
+                if(fKey == kb_Graph) {
+                    // Setup the main timer, which is used for calculating how many times to run the physics
+                    timer_Control = TIMER1_DISABLE;
+                    timer_1_Counter = 0;
+                    timer_Control = TIMER1_ENABLE | TIMER1_32K | TIMER1_UP;
+
+                    ticks = 0;
+
+                    game.status = WAVE;
+                }
                 break;
             case(WAVE):
                 if(fKey == kb_Graph) game.status = PAUSED;

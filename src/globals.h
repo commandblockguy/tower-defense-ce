@@ -18,8 +18,11 @@
 #define F_BTN_HEIGHT 16
 #define TEXT_HEIGHT  8
 #define CLICK_RADIUS 8
-#define NUM_TOWERS   12
 #define TOWER_RADIUS 8
+
+#define TPS 60
+#define ONE_SECOND 128
+#define TPC TPS / ONE_SECOND
 
 enum status {
     PRE_WAVE,
@@ -40,7 +43,7 @@ struct gameData {
     // Wave specific variables
     uint24_t numEnemies;
     uint24_t livingEnemies;
-    uint24_t enemyOffset; // Distance that enemies have proceeded onto the map
+    ufix_t enemyOffset; // Distance that enemies have proceeded onto the map
     uint8_t xpAmt; // XP amount, dependant on the length of the path
 };
 // Global vars
@@ -54,5 +57,9 @@ extern char pathBufErr[32];
 extern uint8_t bufSize;
 
 extern tower_t towers[NUM_TOWERS];
+
+// Upper 24 bits of the timer
+// 128 cycles / second
+#define timer_1_Upper *(uint24_t*)(((uint8_t*)&timer_1_Counter)+1)
 
 #endif

@@ -11,6 +11,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct FixedPoint {
+	uint8_t fPart;
+	uint16_t iPart;
+};
+
+typedef union {
+	struct FixedPoint fp;
+	uint24_t combined;
+} ufix_t;
+
 typedef uint8_t angle_t; // Angle where 256 = 360 degrees or 128 = 180 degrees
 
 typedef struct circle {

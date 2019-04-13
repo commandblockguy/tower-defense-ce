@@ -13,6 +13,7 @@
 #include "gfx/colors.h"
 #include "globals.h"
 #include "util.h"
+#include "enemy.h"
 
 // Various draw and menu functions
 // TODO: rename to graphics.c?
@@ -115,6 +116,7 @@ void drawUI(void) {
     }
 }
 
+// TODO: make look fancy
 // posMin-posMax: range 0-4, represents which button
 void drawButton(uint8_t posMin, uint8_t posMax, char *str) {
     // Calculate edges
@@ -131,6 +133,24 @@ void drawButton(uint8_t posMin, uint8_t posMax, char *str) {
     textX = (leftEdge + rightEdge - gfx_GetStringWidth(str)) / 2 + 1;
     gfx_PrintStringXY(str, textX, LCD_HEIGHT - (F_BTN_HEIGHT + TEXT_HEIGHT) / 2);
 
+}
+
+// Draw all enemies to the screen
+void drawEnemies(void) {
+	int i;
+	for(i = 0; i < game.numEnemies; i++) {
+		enemy_t *enemy = &enemies[i];
+		// Check if the enemy is on-screen, and get its coords
+		uint24_t x;
+		uint8_t y;
+		if(enemyPos(enemy, &x, &y)) {
+			// Enemy is on screen and should be displayed
+			// TODO: draw sprite
+			gfx_SetColor(BLACK);
+			gfx_FillCircle(x, y, 5);
+			// TODO: healthbar
+		}
+	}
 }
 
 void mainMenu(void) {

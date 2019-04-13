@@ -19,4 +19,6 @@ typedef struct {
 
 bool enemyPos(enemy_t *enemy, uint24_t *x, uint8_t *y);
 
+extern enemy_t *enemies;
+
 #endif

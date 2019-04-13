@@ -51,11 +51,12 @@ void initTowers(void) {
 
         // set up tower upgrades, level, XP, stats, etc.
         tower->xp = 0;
-        tower->upgrades = 0;
+        tower->upgradesA = 0;
+        tower->upgradesB = 0;
+        tower->upgradesC = 0;
         tower->level = 0;
         tower->spentLevels = 0;
         tower->archetype = NONE; // TODO: default to standard?
-        tower->upgrades = 0;
         tower->targetType = FIRST;
         tower->ranges = NULL;
         calcTowerStats(&towers[i]);

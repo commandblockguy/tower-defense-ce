@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NUM_TOWERS 12
+
 enum {
     NONE = 0,
     STANDARD,
@@ -24,7 +26,8 @@ enum {
     FIRST,
     LAST,
     STRONG,
-    WEAK
+    WEAK,
+    ARBITRARY
 };
 typedef uint8_t target_t;
 
@@ -40,15 +43,28 @@ typedef struct {
 
     archetype_t archetype; // Basic tower type
     target_t targetType;
-    uint24_t upgrades; // Upgrades bitmap
+    uint8_t upgradesA; // Upgrades
+    uint8_t upgradesB;
+    uint8_t upgradesC;
     uint24_t range;
     uint24_t maxCooldown; // Number that cooldown is set to on firing
 } tower_t;
 
+typedef struct {
+    char* name;
+    char* description;
+} upgradeData_t;
+
+//TODO: why is this here?
+extern upgradeData_t stdDmg[];
+
 // TODO: upgrade types
+// Standard tower upgrade types
 
 void initTowers(void);
 void calcTowerStats(tower_t *tower);
 void calcTowerRanges(tower_t *tower);
+
+extern tower_t towers[NUM_TOWERS];
 
 #endif

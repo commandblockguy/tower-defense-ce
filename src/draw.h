@@ -15,6 +15,7 @@ void drawTowers(uint24_t csrX, uint8_t csrY);
 void drawPath(void);
 void drawUI(void);
 void drawPathBuffer(void);
+void drawFunctions(void);
 
 // Menu functions
 // TODO: move to own file?
