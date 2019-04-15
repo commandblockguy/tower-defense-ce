@@ -16,10 +16,12 @@ void drawPath(void);
 void drawUI(void);
 void drawPathBuffer(void);
 void drawFunctions(void);
+void drawEnemies(void);
 
 // Menu functions
 // TODO: move to own file?
 void mainMenu(void);
 void highScores(void);
+void towerEdit(tower_t *tower);
 
 #endif

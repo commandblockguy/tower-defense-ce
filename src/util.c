@@ -9,7 +9,6 @@
 #include <string.h>
 
 #include "util.h"
-#undef NDEBUG
 #include "debug.h"
 
 // Contains various general utility functions

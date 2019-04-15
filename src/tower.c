@@ -11,8 +11,32 @@
 #include "globals.h"
 #include "util.h"
 #include "tower.h"
+#include "enemy.h"
+
+#include "debug.h"
+
+// Factors determining XP curve
+#define LVL_BASE 50
+#define LVL_EXP  1.2
 
 tower_t towers[NUM_TOWERS];
+
+// Archetype names
+const char *archNames[] = {
+    "NONE",
+    "Standard",
+    "Sniper",
+    "Burst"
+};
+
+// Target type names
+const char *tgtNames[] = {
+    "First",
+    "Last",
+    "Strong",
+    "Weak",
+    "Random"
+};
 
 void initTowers(void) {
     int i;
@@ -50,13 +74,12 @@ void initTowers(void) {
         // On second thought bridson's doesn't seem that much more complicated. Whatever.
 
         // set up tower upgrades, level, XP, stats, etc.
-        tower->xp = 0;
-        tower->upgradesA = 0;
-        tower->upgradesB = 0;
-        tower->upgradesC = 0;
-        tower->level = 0;
+        tower->xp = 20; // TODO: temp
+        tower->upgrades[0] = 0;
+        tower->upgrades[1] = 0;
+        tower->upgrades[2] = 0;
         tower->spentLevels = 0;
-        tower->archetype = NONE; // TODO: default to standard?
+        tower->archetype = STANDARD; // TODO: default to standard?
         tower->targetType = FIRST;
         tower->ranges = NULL;
         calcTowerStats(&towers[i]);
@@ -147,4 +170,53 @@ void calcTowerRanges(tower_t *tower) {
     tower->ranges = malloc(sizeof(tower->ranges[0]) * numRanges);
     memcpy(tower->ranges, ranges, sizeof(tower->ranges[0]) * numRanges);
     tower->numRanges = numRanges;
+}
+
+// TODO: implement
+void attemptShot(tower_t *tower) {
+    if(tower->cooldown) {
+        // Tower is still on cooldown
+        tower->cooldown--;
+    } else {
+        // We can actually fire
+
+        // Handle different tower types differently
+        switch(tower->archetype) {
+            default:
+            case(NONE):
+                // We shouldn't ever get here
+                dbg_sprintf(dbgerr, "Archetypeless tower in play\n");
+            case(STANDARD):
+            case(SNIPER):
+                // Scan stuff somehow
+
+                if(tower->targetType == LAST) {
+                    int8_t i;
+                    // Iterate through ranges backwards
+                    for(i = tower->numRanges - 1; i >= 0; i--) {
+                        // Check if all enemies have already passed this range
+                        if((int24_t)(game.enemyOffset.fp.iPart - enemies[game.numEnemies - 1].offset) > tower->ranges[i].dis2) {
+                            // Skip the rest of the check
+                            continue;
+                        }
+                    }
+                }
+                break;
+            case(BURST):
+                // Damage all enemies inside the range
+                break;
+        }
+    }
+}
+
+// TODO: if shot results in level up, handle accordingly
+
+// Minimum amount of XP a tower of that level will have
+uint24_t levelToXP(uint8_t level) {
+    return LVL_BASE * pow(level, LVL_EXP);
+}
+
+// The level a tower with that amount of XP would have
+uint8_t xpToLevel(uint24_t xp) {
+    return log(xp / LVL_BASE) / log(LVL_EXP);
 }

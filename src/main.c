@@ -7,9 +7,6 @@
  *--------------------------------------
 */
 
-//TODO: remove
-#undef NDEBUG
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -94,6 +91,7 @@ int24_t play(void) {
     game.lives = NUM_LIVES;
     game.status = PRE_WAVE; // Whether the game is pre-wave, paused, or wave
     game.score = 0;
+    game.waveNumber = 0;
 
     resetPathBuffer();
     updatePath();
@@ -291,8 +289,17 @@ int24_t play(void) {
                     }
                 }
             } else {
+                int i;
                 // TODO: Check if we are over a tower
-                //
+                // Scan through all towers
+                for(i = 0; i < NUM_TOWERS; i++) {
+                    tower_t *tower = &towers[i];
+                    // Check if tower is near cursor
+                    if(distBetween(tower->posX, tower->posY, csrX, csrY) < TOWER_RADIUS + CLICK_RADIUS) {
+                        towerEdit(tower);
+                        break;
+                    }
+                }
             }
 
             // Check if we are over a Fn button
@@ -337,10 +344,15 @@ int24_t play(void) {
                         game.xpAmt = BASE_XP + path[game.numPathPoints].distance / XP_DIST;
                     }
 
-                    spawnEnemies();
+                    spawnEnemies(game.waveNumber);
 
                     // Reset enemy progression
                     game.enemyOffset.combined = 0;
+
+                    // Reset all towers' cooldowns
+                    for(i = 0; i < NUM_TOWERS; i++) {
+                        towers[i].cooldown = 0;
+                    }
 
                     // Setup the main timer, which is used for calculating how many times to run the physics
                     timer_Control = TIMER1_DISABLE;

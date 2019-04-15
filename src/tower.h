@@ -23,7 +23,7 @@ enum {
 typedef uint8_t archetype_t;
 
 enum {
-    FIRST,
+    FIRST = 0,
     LAST,
     STRONG,
     WEAK,
@@ -37,17 +37,18 @@ typedef struct {
 
     uint8_t numRanges; // Number of elements in ranges
     struct pathRange *ranges;
-    uint24_t xp; // This does not get reset with each level
-    uint8_t level;
+    uint24_t xp; // Used to calculate the level of the tower
     uint8_t spentLevels; // Number of levels which have been used up already
 
     archetype_t archetype; // Basic tower type
     target_t targetType;
-    uint8_t upgradesA; // Upgrades
-    uint8_t upgradesB;
-    uint8_t upgradesC;
-    uint24_t range;
-    uint24_t maxCooldown; // Number that cooldown is set to on firing
+    uint8_t upgrades[3]; // Upgrades
+    uint8_t damage;
+    uint8_t range;
+    uint8_t maxCooldown; // Number that cooldown is set to on firing
+
+    uint8_t cooldown; // Amount of time between shots
+    uint8_t animTime; // Reset to 0 each time an animation is started, increments by 1 each tick
 } tower_t;
 
 typedef struct {
@@ -55,16 +56,18 @@ typedef struct {
     char* description;
 } upgradeData_t;
 
-//TODO: why is this here?
-extern upgradeData_t stdDmg[];
-
-// TODO: upgrade types
-// Standard tower upgrade types
-
 void initTowers(void);
 void calcTowerStats(tower_t *tower);
 void calcTowerRanges(tower_t *tower);
+void attemptShot(tower_t *tower);
+
+uint24_t levelToXP(uint8_t level);
+uint8_t xpToLevel(uint24_t xp);
 
 extern tower_t towers[NUM_TOWERS];
+extern char *archNames[];
+extern char *tgtNames[];
+
+extern const upgradeData_t upgradeData[3][3][4];
 
 #endif

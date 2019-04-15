@@ -11,7 +11,6 @@
 #include "globals.h"
 #include "enemy.h"
 
-#undef NDEBUG
 #include "debug.h"
 
 enemy_t *enemies = NULL; // This is dynamically allocated at the beginning of each level
@@ -23,7 +22,7 @@ bool enemyPos(enemy_t *enemy, uint24_t *x, uint8_t *y) {
     int24_t realPos = game.enemyOffset.fp.iPart - enemy->offset;
     int24_t percentTop, percentBtm;
     pathPoint_t *next, *last;
-    
+
     // Return false if the enemy has not yet entered the screen or has left the screen already
     if(realPos < 0 || realPos > path[game.numPathPoints - 1].distance) return false;
 

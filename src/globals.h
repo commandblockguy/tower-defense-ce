@@ -37,6 +37,7 @@ struct gameData {
     uint8_t lives;
     uint8_t status; // Whether the game is pre-wave, paused, or wave
     int8_t score; // Number of enemies killed
+    uint24_t waveNumber;
     
     uint8_t numPathPoints; // Equal to the number of points
     
