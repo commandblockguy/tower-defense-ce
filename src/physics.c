@@ -12,24 +12,46 @@
 
 #include "globals.h"
 #include "tower.h"
+#include "enemy.h"
 
 // Advancement rate per tick, converted to fixed point
 #define ADVANCEMENT_RATE (32 * 256 / TPS)
 
+extern uint24_t ticks;
+
 // TODO: finish pseudocoding
 void processPhysics(void) {
-	int i;
-	// TODO: Advance the enemy offset
-	game.enemyOffset.combined += ADVANCEMENT_RATE; // TODO: temp
+    int i;
+    // Advance the enemy offset
+    game.enemyOffset.combined += ADVANCEMENT_RATE; // TODO: temp
 
-	// Have each tower attempt its shot
-	for(i = 0; i < NUM_TOWERS; i++) {
-		attemptShot(&towers[i]);
-	}
+    // Have each tower attempt its shot
+    for(i = 0; i < NUM_TOWERS; i++) {
+        attemptShot(&towers[i]);
+    }
 
-	// TODO: Check if any enemy has passed the end of the line
+    // TODO: Check if any enemy has passed the end of the line
 
-	// TODO: If all enemies dead
+    // If all enemies dead
+    if(!game.livingEnemies) {
         //  Free enemies
+        free(enemies);
+        enemies = NULL;
+
+        // Set all tower cooldowns to 0
+        for(i = 0; i < NUM_TOWERS; i++) {
+            tower->cooldown = 0;
+        }
+        
         //  Set status back to PRE_WAVE
+        game.status = PRE_WAVE;
+    }
+}
+
+void resetTickTimer(void) {
+    timer_Control = TIMER1_DISABLE;
+    timer_1_Counter = 0;
+    timer_Control = TIMER1_ENABLE | TIMER1_32K | TIMER1_UP;
+
+    ticks = 0;
 }

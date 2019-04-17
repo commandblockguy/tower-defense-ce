@@ -16,14 +16,13 @@
 #include "debug.h"
 
 // Factors determining XP curve
-#define LVL_BASE 50
+#define LVL_BASE 50.0
 #define LVL_EXP  1.2
 
 tower_t towers[NUM_TOWERS];
 
 // Archetype names
 const char *archNames[] = {
-    "NONE",
     "Standard",
     "Sniper",
     "Burst"
@@ -74,13 +73,13 @@ void initTowers(void) {
         // On second thought bridson's doesn't seem that much more complicated. Whatever.
 
         // set up tower upgrades, level, XP, stats, etc.
-        tower->xp = 20; // TODO: temp
+        tower->xp = 200; // TODO: temp
         tower->upgrades[0] = 0;
         tower->upgrades[1] = 0;
         tower->upgrades[2] = 0;
         tower->spentLevels = 0;
         tower->archetype = STANDARD; // TODO: default to standard?
-        tower->targetType = FIRST;
+        tower->targetType = LAST; // TODO: first
         tower->ranges = NULL;
         calcTowerStats(&towers[i]);
     }
@@ -139,7 +138,7 @@ void calcTowerRanges(tower_t *tower) {
                 }
                 numRanges++;
                 ranges[numRanges].dis1 = // (how do I style this?)
-                ranges[numRanges].dis2 = distBetween(lsOrig.x1, lsOrig.y1, lsInt.x1, lsInt.y1);
+                ranges[numRanges].dis2 = path[i-1].distance + distBetween(lsOrig.x1, lsOrig.y1, lsInt.x1, lsInt.y1);
             }
 
             // Add the length of the line to the high distance
@@ -178,7 +177,16 @@ void attemptShot(tower_t *tower) {
         // Tower is still on cooldown
         tower->cooldown--;
     } else {
+        int i;
         // We can actually fire
+
+        // Debug stuff
+        // TODO: remove
+        /*dbg_sprintf(dbgout, "Enemies: [");
+        for(i = 0; i < game.numEnemies; i++) {
+            dbg_sprintf(dbgout, "(%u, %i, %u),", enemies[i].offset, game.enemyOffset.fp.iPart - enemies[i].offset, enemies[i].health);
+        }
+        dbg_sprintf(dbgout, "]\n");*/
 
         // Handle different tower types differently
         switch(tower->archetype) {
@@ -192,14 +200,53 @@ void attemptShot(tower_t *tower) {
 
                 if(tower->targetType == LAST) {
                     int8_t i;
+                    int24_t index;
                     // Iterate through ranges backwards
                     for(i = tower->numRanges - 1; i >= 0; i--) {
+                        struct pathRange *range = &tower->ranges[i];
+                        int24_t firstEnemyDist = game.enemyOffset.fp.iPart - enemies[0].offset;
+                        int24_t lastEnemyDist = game.enemyOffset.fp.iPart - enemies[game.numEnemies - 1].offset;
                         // Check if all enemies have already passed this range
-                        if((int24_t)(game.enemyOffset.fp.iPart - enemies[game.numEnemies - 1].offset) > tower->ranges[i].dis2) {
+                        //dbg_sprintf(dbgout, "Checking range %u - (%u, %u)\n", i, range->dis1, range->dis2);
+                        //dbg_sprintf(dbgout, "Last enemy distance: %i\n", lastEnemyDist);
+                        if(firstEnemyDist < (int24_t)range->dis1) {
                             // Skip the rest of the check
+                            //dbg_sprintf(dbgout, "First enemy has not entered this range\n");
+                            return;
+                        }
+                        if(lastEnemyDist > (int24_t)range->dis2) {
+                            // Skip the rest of the check
+                            //dbg_sprintf(dbgout, "Last enemy has left this range\n");
                             continue;
                         }
+                        index = indexLastEnemyBefore(game.enemyOffset.fp.iPart - range->dis1);
+                        //dbg_sprintf(dbgout, "Index: %u - (%i, %u)\n", index, game.enemyOffset.fp.iPart - enemies[index].offset, enemies[index].health);
+                        // Get the first after or on the range start point
+                        if(game.enemyOffset.fp.iPart - enemies[index].offset != range->dis1) index++;
+                        // Find a living enemy
+                        while(!enemies[index].health && index >= 0) {
+                            //dbg_sprintf(dbgout, "Index %u is dead\n", index);
+                            if(game.enemyOffset.fp.iPart - enemies[index].offset > range->dis2) index = -1;
+                            index--;
+                        }
+                        // If we exit the range again, skip to the next one
+                        if(index < 0) continue;
+                        //dbg_sprintf(dbgout, "Tower: %u\n", tower-towers);
+                        //dbg_sprintf(dbgout, "Found enemy %u\n", index);
+                        // TODO: damage enemy, set cooldown, increment XP
+                        if(enemies[index].health <= tower->damage) {
+                           enemies[index].health = 0;
+                           tower->xp += game.xpAmt;
+                           game.livingEnemies--;
+                           //dbg_sprintf(dbgout, "%u left.\n", game.livingEnemies);
+                        } else {
+                            enemies[index].health -= tower->damage;
+                        }
+                        tower->cooldown = tower->maxCooldown;
+                        return;
                     }
+                } else {
+
                 }
                 break;
             case(BURST):
@@ -218,5 +265,12 @@ uint24_t levelToXP(uint8_t level) {
 
 // The level a tower with that amount of XP would have
 uint8_t xpToLevel(uint24_t xp) {
-    return log(xp / LVL_BASE) / log(LVL_EXP);
+    return pow(xp / LVL_BASE, 1 / LVL_EXP);
+}
+
+void calcTowerStats(tower_t *tower) {
+    // compute damage, range, reload time based on upgrades
+    tower->damage      = baseStats[tower->archetype][0] * (tower->upgrades[0] + 1);
+    tower->range       = baseStats[tower->archetype][1] * (tower->upgrades[1] + 1);
+    tower->maxCooldown = baseStats[tower->archetype][2] / (tower->upgrades[2] + 1);
 }

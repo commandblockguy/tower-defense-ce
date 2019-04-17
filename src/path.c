@@ -36,6 +36,8 @@ void initBuffer(void) {
         pathBufX[i] = path[i].posX;
         pathBufY[i] = path[i].posY;
     }
+
+    bufSize = game.numPathPoints;
     // TODO: error bits
 }
 

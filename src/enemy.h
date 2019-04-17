@@ -19,6 +19,7 @@ typedef struct {
 
 bool enemyPos(enemy_t *enemy, uint24_t *x, uint8_t *y);
 void spawnEnemies(uint24_t round);
+uint24_t indexLastEnemyBefore(uint24_t distance);
 
 extern enemy_t *enemies;
 

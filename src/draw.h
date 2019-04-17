@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "tower.h"
+
 void drawTowers(uint24_t csrX, uint8_t csrY);
 void drawPath(void);
 void drawUI(void);
@@ -23,5 +25,6 @@ void drawEnemies(void);
 void mainMenu(void);
 void highScores(void);
 void towerEdit(tower_t *tower);
+archetype_t selectTowerType(void);
 
 #endif

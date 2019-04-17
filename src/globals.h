@@ -20,7 +20,7 @@
 #define CLICK_RADIUS 8
 #define TOWER_RADIUS 8
 
-#define TPS 60
+#define TPS 30
 #define ONE_SECOND 128
 #define TPC TPS / ONE_SECOND
 

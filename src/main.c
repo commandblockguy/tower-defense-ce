@@ -51,6 +51,8 @@ struct gameData game; // Game global
 uint24_t csrX = LCD_WIDTH  / 2;
 uint8_t  csrY = LCD_HEIGHT / 2;
 
+uint24_t ticks;
+
 void main(void) {
     dbg_sprintf(dbgout, "\n\nProgram Started\n");
     // Seed the RNG
@@ -81,7 +83,6 @@ int24_t play(void) {
     uint8_t selectedIndex = 0;
     uint24_t carryOrigX;
     uint8_t carryOrigY;
-    uint24_t ticks = 0;
 
     bool updatedPath = true; // True if the player has changed the path
 
@@ -124,6 +125,8 @@ int24_t play(void) {
             // This will overflow after 73 minutes in a round, if my calculations are correct
             for(tries = 0; ONE_SECOND * ticks < TPS * timer_1_Upper && tries < 10; tries++) {
                 processPhysics();
+                // If the wave is over, quit running physics
+                if(game.status != WAVE) break;
                 // Increment the number of ticks that have elapsed
                 ticks++;
             }
@@ -143,9 +146,9 @@ int24_t play(void) {
             // Draw the path buffer
             drawPathBuffer();
         } else {
-            drawTowers(csrX, csrY);
             // Draw the regular path
             drawPath();
+            drawTowers(csrX, csrY);
         }
         // TODO: draw enemies
         drawEnemies();
@@ -290,13 +293,15 @@ int24_t play(void) {
                 }
             } else {
                 int i;
-                // TODO: Check if we are over a tower
+                // Check if we are over a tower
                 // Scan through all towers
                 for(i = 0; i < NUM_TOWERS; i++) {
                     tower_t *tower = &towers[i];
                     // Check if tower is near cursor
                     if(distBetween(tower->posX, tower->posY, csrX, csrY) < TOWER_RADIUS + CLICK_RADIUS) {
                         towerEdit(tower);
+                        // TODO: reset ticks passed
+                        resetTickTimer();
                         break;
                     }
                 }
@@ -354,12 +359,7 @@ int24_t play(void) {
                         towers[i].cooldown = 0;
                     }
 
-                    // Setup the main timer, which is used for calculating how many times to run the physics
-                    timer_Control = TIMER1_DISABLE;
-                    timer_1_Counter = 0;
-                    timer_Control = TIMER1_ENABLE | TIMER1_32K | TIMER1_UP;
-
-                    ticks = 0;
+                    resetTickTimer();
 
                     game.status = WAVE;
                 }
@@ -373,12 +373,7 @@ int24_t play(void) {
                 break;
             case(PAUSED):
                 if(fKey == kb_Graph) {
-                    // Setup the main timer, which is used for calculating how many times to run the physics
-                    timer_Control = TIMER1_DISABLE;
-                    timer_1_Counter = 0;
-                    timer_Control = TIMER1_ENABLE | TIMER1_32K | TIMER1_UP;
-
-                    ticks = 0;
+                    resetTickTimer();
 
                     game.status = WAVE;
                 }
@@ -432,14 +427,4 @@ void saveAppvar(void) {
 
     // Free path
     // Free enemies
-}
-
-void calcTowerStats(tower_t *tower) {
-    // TODO: compute range, reload time, etc. based on upgrades
-    // TODO: temp
-    tower->range = 25;
-}
-
-void towerEditMenu(tower_t *tower) {
-
 }

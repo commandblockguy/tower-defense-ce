@@ -66,3 +66,22 @@ void spawnEnemies(uint24_t round) {
         enemy->nextPoint = 0;
     }
 }
+
+// Returns the index of the enemy with the highest offset that is less than or equal to distance
+uint24_t indexLastEnemyBefore(uint24_t distance) {
+    // Basically just a binary search
+    int24_t low = 0, high = game.numEnemies - 1;
+    //dbg_sprintf(dbgout, "Last offset before %u:\n", distance);
+    while (high - low > 1) {
+        uint24_t mid = (low + high) / 2;
+        if (enemies[mid].offset >= distance) {
+            high = mid - 1;
+            //dbg_sprintf(dbgout, "High: %i\n", high);
+        }
+        else {
+            low = mid;
+            //dbg_sprintf(dbgout, "Low: %i\n", low);
+        }
+    }
+    return low;
+}

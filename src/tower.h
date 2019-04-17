@@ -14,8 +14,8 @@
 #define NUM_TOWERS 12
 
 enum {
-    NONE = 0,
-    STANDARD,
+    NONE = -1,
+    STANDARD = 0,
     SNIPER,
     BURST,
     MAGE // may not implement this one, idk
@@ -43,9 +43,9 @@ typedef struct {
     archetype_t archetype; // Basic tower type
     target_t targetType;
     uint8_t upgrades[3]; // Upgrades
-    uint8_t damage;
-    uint8_t range;
-    uint8_t maxCooldown; // Number that cooldown is set to on firing
+    uint24_t damage;
+    uint24_t range;
+    uint24_t maxCooldown; // Number that cooldown is set to on firing
 
     uint8_t cooldown; // Amount of time between shots
     uint8_t animTime; // Reset to 0 each time an animation is started, increments by 1 each tick
@@ -69,5 +69,6 @@ extern char *archNames[];
 extern char *tgtNames[];
 
 extern const upgradeData_t upgradeData[3][3][4];
+extern const uint24_t baseStats[3][3];
 
 #endif

@@ -12,5 +12,6 @@
 #include <string.h>
 
 void processPhysics(void);
+void resetTickTimer(void);
 
 #endif
