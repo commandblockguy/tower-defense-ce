@@ -23,6 +23,8 @@ bool enemyPos(enemy_t *enemy, uint24_t *x, uint8_t *y) {
     int24_t percentTop, percentBtm;
     pathPoint_t *next, *last;
 
+    //dbg_sprintf(dbgout, "Enemy %u: dist %u, next: %u\n", enemy-enemies, enemy->offset, enemy->nextPoint);
+
     // Return false if the enemy has not yet entered the screen or has left the screen already
     if(realPos < 0 || realPos > path[game.numPathPoints - 1].distance) return false;
 
@@ -50,7 +52,7 @@ void spawnEnemies(uint24_t round) {
     int i;
     uint8_t enemySpacing = 15; // temp
 
-    game.livingEnemies = game.numEnemies = 10; // temp
+    game.livingEnemies = game.numEnemies = 50; // temp
     
     // Handle memory
     free(enemies);
@@ -67,20 +69,21 @@ void spawnEnemies(uint24_t round) {
     }
 }
 
-// Returns the index of the enemy with the highest offset that is less than or equal to distance
-uint24_t indexLastEnemyBefore(uint24_t distance) {
+// Returns the index of the furthest enemy that has not passed distance
+uint24_t firstEnemyBefore(uint24_t distance) {
     // Basically just a binary search
-    int24_t low = 0, high = game.numEnemies - 1;
+    int24_t low = 0, high = game.numEnemies;
     //dbg_sprintf(dbgout, "Last offset before %u:\n", distance);
-    while (high - low > 1) {
+    while (low != high) {
         uint24_t mid = (low + high) / 2;
-        if (enemies[mid].offset >= distance) {
-            high = mid - 1;
-            //dbg_sprintf(dbgout, "High: %i\n", high);
+        int24_t realPos = game.enemyOffset.fp.iPart - enemies[mid].offset;
+        if (realPos >= (int24_t)distance) {
+            low = mid + 1;
+            //dbg_sprintf(dbgout, "Low: %i\n", low);
         }
         else {
-            low = mid;
-            //dbg_sprintf(dbgout, "Low: %i\n", low);
+            high = mid;
+            //dbg_sprintf(dbgout, "High: %i\n", high);
         }
     }
     return low;

@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define PATH_WIDTH 10
+
 typedef struct {
     uint24_t posX;
     uint8_t posY;

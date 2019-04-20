@@ -18,7 +18,6 @@
 #define F_BTN_HEIGHT 16
 #define TEXT_HEIGHT  8
 #define CLICK_RADIUS 8
-#define TOWER_RADIUS 8
 
 #define TPS 30
 #define ONE_SECOND 128

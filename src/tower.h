@@ -11,7 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "enemy.h"
+
 #define NUM_TOWERS 12
+#define TOWER_RADIUS 8
 
 enum {
     NONE = -1,
@@ -49,6 +52,8 @@ typedef struct {
 
     uint8_t cooldown; // Amount of time between shots
     uint8_t animTime; // Reset to 0 each time an animation is started, increments by 1 each tick
+    uint24_t targetX; // Where to point lasers
+    uint8_t targetY;
 } tower_t;
 
 typedef struct {
@@ -60,6 +65,7 @@ void initTowers(void);
 void calcTowerStats(tower_t *tower);
 void calcTowerRanges(tower_t *tower);
 void attemptShot(tower_t *tower);
+void towerDamageEnemy(tower_t *tower, enemy_t *enemy);
 
 uint24_t levelToXP(uint8_t level);
 uint8_t xpToLevel(uint24_t xp);
@@ -70,5 +76,6 @@ extern char *tgtNames[];
 
 extern const upgradeData_t upgradeData[3][3][4];
 extern const uint24_t baseStats[3][3];
+extern const uint24_t statMultipliers[3][2];
 
 #endif

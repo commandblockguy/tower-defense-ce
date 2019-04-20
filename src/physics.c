@@ -30,17 +30,29 @@ void processPhysics(void) {
         attemptShot(&towers[i]);
     }
 
-    // TODO: Check if any enemy has passed the end of the line
+    i = firstEnemyBefore(path[game.numPathPoints - 1].distance);
+    while(i >= 0) {
+        if(enemies[i].health && (int24_t)(game.enemyOffset.fp.iPart - enemies[i].offset) > (int24_t)path[game.numPathPoints - 1].distance) {
+            // Mark enemy as dead, lose a life
+            enemies[i].health = 0;
+            game.lives--;
+            game.livingEnemies--;
+            dbg_sprintf(dbgout, "%u lives left.\n", game.lives);
+        }
+        i--;
+    }
 
     // If all enemies dead
     if(!game.livingEnemies) {
+
+        dbg_sprintf(dbgout, "All enemies dead, ending wave...\n");
         //  Free enemies
         free(enemies);
         enemies = NULL;
 
         // Set all tower cooldowns to 0
         for(i = 0; i < NUM_TOWERS; i++) {
-            tower->cooldown = 0;
+            towers[i].cooldown = 0;
         }
         
         //  Set status back to PRE_WAVE

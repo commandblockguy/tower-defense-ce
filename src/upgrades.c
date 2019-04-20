@@ -9,6 +9,13 @@
 #include <string.h>
 
 #include "tower.h"
+#include "path.h"
+
+const char *statNames[] = {
+    "Damage",
+    "Range",
+    "Cooldown"
+};
 
 // Upgrade data
 const upgradeData_t upgradeData[3][3][4] = {
@@ -69,20 +76,38 @@ const upgradeData_t upgradeData[3][3][4] = {
     }
 };
 
-const uint24_t baseStats[3][3] = {
+// Formula for damage and range is baseStats[type][stat] + statMultipliers[type][stat] * (level + 1)
+
+// Cooldown is not multiplied and thus does not include a multiplier
+const uint24_t statMultipliers[3][2] = {
     { // Standard stats
         3,  // Damage
-        25, // Range
-        15  // Cooldown
+        10 // Range
     },
     { // Sniper stats
-        10,  // Damage
-        60,  // Range
-        150  // Cooldown
+        15,  // Damage
+        60  // Range
     },
     { // Burst stats
         1,  // Damage
-        10, // Range
-        5  // Cooldown
+        15 // Range
+    }
+};
+
+const uint24_t baseStats[3][3] = {
+    {
+        0,
+        TOWER_RADIUS + PATH_WIDTH / 2,
+        15
+    },
+    {
+        15,
+        TOWER_RADIUS + PATH_WIDTH / 2,
+        150
+    },
+    {
+        1,
+        TOWER_RADIUS + PATH_WIDTH / 2,
+        20
     }
 };

@@ -19,12 +19,10 @@ void drawUI(void);
 void drawPathBuffer(void);
 void drawFunctions(void);
 void drawEnemies(void);
+void blitLinesOffset(uint24_t start, uint24_t width, int24_t offset);
 
-// Menu functions
-// TODO: move to own file?
-void mainMenu(void);
-void highScores(void);
-void towerEdit(tower_t *tower);
-archetype_t selectTowerType(void);
+void drawButton(uint8_t posMin, uint8_t posMax, bool highlight, char *str);
+void drawTower(tower_t *tower, uint24_t x, uint8_t y, uint8_t scale, bool range);
+void printWithNewlines(char *string, uint24_t x, uint8_t y);
 
 #endif

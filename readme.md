@@ -1,4 +1,4 @@
-### Reverse Tower Defense
+### Tower Defense CE
 
 commandblockguy's CC22 entry
 

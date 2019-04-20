@@ -28,11 +28,12 @@
 #include "tower.h"
 #include "enemy.h"
 #include "physics.h"
+#include "menu.h"
 
 const uint8_t NUM_LIVES     = 25;
 const uint8_t CSR_SPEED     = 3;
 const uint8_t TOWER_DIST    = 48;
-const uint24_t XP_DIST      = 100;
+const uint24_t XP_DIST      = LCD_HEIGHT * 10;
 const uint8_t BASE_XP       = 3;
 
 void main(void);
@@ -54,6 +55,7 @@ uint8_t  csrY = LCD_HEIGHT / 2;
 uint24_t ticks;
 
 void main(void) {
+    int i; //temp
     dbg_sprintf(dbgout, "\n\nProgram Started\n");
     // Seed the RNG
     srand(rtc_Time());
@@ -62,6 +64,7 @@ void main(void) {
     gfx_Begin();
     gfx_SetDrawBuffer();
     gfx_SetPalette(gfx_group_pal, sizeof_gfx_group_pal, 0);
+
     // Display the menu
     mainMenu();
 
@@ -83,6 +86,8 @@ int24_t play(void) {
     uint8_t selectedIndex = 0;
     uint24_t carryOrigX;
     uint8_t carryOrigY;
+    // Used for sliding popups down
+    uint8_t animTime = 0;
 
     bool updatedPath = true; // True if the player has changed the path
 
@@ -151,11 +156,20 @@ int24_t play(void) {
             drawTowers(csrX, csrY);
         }
         // TODO: draw enemies
-        drawEnemies();
+        if(game.status == WAVE) {
+            drawEnemies();
+        }
         // Draw UI
         drawUI();
         // Draw cursor
         gfx_TransparentSprite(cursor, csrX, csrY);
+
+        if(animTime) {
+            const uint8_t diff = LCD_HEIGHT / 10;
+            // Slide the screen thing down
+            blitLinesOffset(LCD_HEIGHT - diff * animTime, diff * animTime, diff);
+            animTime--;
+        }
 
         // Blit the buffer
         gfx_BlitBuffer();
@@ -300,8 +314,10 @@ int24_t play(void) {
                     // Check if tower is near cursor
                     if(distBetween(tower->posX, tower->posY, csrX, csrY) < TOWER_RADIUS + CLICK_RADIUS) {
                         towerEdit(tower);
-                        // TODO: reset ticks passed
+                        // Reset ticks passed
                         resetTickTimer();
+                        // Setup animation
+                        animTime = 10;
                         break;
                     }
                 }
@@ -346,7 +362,9 @@ int24_t play(void) {
                         }
 
                         // Compute XP amount
-                        game.xpAmt = BASE_XP + path[game.numPathPoints].distance / XP_DIST;
+                        game.xpAmt = BASE_XP + XP_DIST / path[game.numPathPoints - 1].distance;
+
+                        dbg_sprintf(dbgout, "XP amount is %u\n", game.xpAmt);
                     }
 
                     spawnEnemies(game.waveNumber);

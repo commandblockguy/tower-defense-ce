@@ -6,9 +6,9 @@
 # ----------------------------
 
 NAME        ?= TDEFENSE
-COMPRESSED  ?= NO
+COMPRESSED  ?= NOe
 ICON        ?= iconc.png
-DESCRIPTION ?= "Reverse Tower Defense"
+DESCRIPTION ?= "Tower Defense CE"
 
 # ----------------------------
 
