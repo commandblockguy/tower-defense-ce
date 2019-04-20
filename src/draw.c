@@ -100,6 +100,7 @@ void drawUI(void) {
 
     gfx_SetColor(BLACK);
     gfx_SetTextFGColor(BLACK);
+    gfx_SetTextScale(1, 1);
 
     gfx_HorizLine(0, LCD_HEIGHT - F_BTN_HEIGHT, LCD_WIDTH);
 

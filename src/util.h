@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Number of elements in an array
+#define elems(ARR) (sizeof(ARR)/sizeof(ARR[0]))
+
 struct FixedPoint {
 	uint8_t fPart;
 	uint16_t iPart;

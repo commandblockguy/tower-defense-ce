@@ -8,10 +8,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <debug.h>
+
 #include "globals.h"
 #include "enemy.h"
-
-#include "debug.h"
 
 enemy_t *enemies = NULL; // This is dynamically allocated at the beginning of each level
 
@@ -70,6 +70,7 @@ void spawnEnemies(uint24_t round) {
 }
 
 // Returns the index of the furthest enemy that has not passed distance
+// TODO: use firstAfter()
 uint24_t firstEnemyBefore(uint24_t distance) {
     // Basically just a binary search
     int24_t low = 0, high = game.numEnemies;

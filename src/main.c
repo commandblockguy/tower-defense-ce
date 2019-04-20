@@ -17,10 +17,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <graphx.h>
+#include <debug.h>
+#include <keypadc.h>
+
 #include "globals.h"
-#include "debug.h"
-#include "keypadc.h"
-#include "graphx.h"
 #include "gfx/colors.h"
 #include "gfx/gfx_group.h"
 #include "draw.h"
@@ -29,6 +30,9 @@
 #include "enemy.h"
 #include "physics.h"
 #include "menu.h"
+#include "reader.h"
+
+extern const readerFile_t rf_test; // TODO: temp
 
 const uint8_t NUM_LIVES     = 25;
 const uint8_t CSR_SPEED     = 3;
@@ -64,6 +68,8 @@ void main(void) {
     gfx_Begin();
     gfx_SetDrawBuffer();
     gfx_SetPalette(gfx_group_pal, sizeof_gfx_group_pal, 0);
+
+    reader(&rf_test);
 
     // Display the menu
     mainMenu();

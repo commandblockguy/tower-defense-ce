@@ -303,3 +303,23 @@ archetype_t selectTowerType(void) {
         gfx_BlitBuffer();
     }
 }
+
+// Used as a callback for the reader
+bool viewQR(gfx_sprite_t *sprite) {
+    // QR codes are square, so we can just use the width
+    uint8_t size = sprite->width;
+    // Maximum size we can scale the image without making things non-square
+    // or going off the top of the screen
+    uint8_t scale = LCD_HEIGHT / size;
+
+    uint24_t x = (LCD_WIDTH - scale * size) / 2;
+    uint8_t y = (LCD_HEIGHT - scale * size) / 2;
+
+    gfx_FillScreen(WHITE);
+    gfx_ScaledSprite_NoClip(sprite, x, y, scale, scale);
+
+    // Wait for a keypress
+    while(!os_GetCSC());
+    // Don't exit the reader
+    return false;
+}

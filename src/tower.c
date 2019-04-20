@@ -78,7 +78,7 @@ void initTowers(void) {
         tower->upgrades[1] = 0;
         tower->upgrades[2] = 0;
         tower->spentLevels = 0;
-        tower->archetype = SNIPER; // TODO: default to standard or random or NONE?
+        tower->archetype = STANDARD; // TODO: default to standard or random or NONE?
         tower->targetType = FIRST; // TODO: first
         tower->ranges = NULL;
         calcTowerStats(&towers[i]);
