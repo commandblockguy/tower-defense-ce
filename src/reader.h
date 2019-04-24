@@ -1,3 +1,6 @@
+#ifndef H_READER
+#define H_READER
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -58,3 +61,5 @@ typedef struct ReaderFile {
 
 // It is the caller's responsibility to set up the palettes and such
 void reader(readerFile_t *file);
+
+#endif
