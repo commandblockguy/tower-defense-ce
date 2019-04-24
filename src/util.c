@@ -8,11 +8,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <graphx.h>
+
 #include "util.h"
 #include "debug.h"
 
 // Contains various general utility functions
 // And by "general" I actually mean "geometry and collision detection".
+// EDIT: I guess there's a string function here now
 
 uint24_t distBetween(uint24_t x1, uint8_t y1, uint24_t x2, uint8_t y2) {
     int24_t dX = x2 - x1;
@@ -127,4 +130,12 @@ void removeBoolArray(char* array, uint8_t index, uint8_t offset, uint8_t size) {
 
 uint24_t length(lineSeg_t *ls) {
     return distBetween(ls->x1, ls->y1, ls->x2, ls->y2);
+}
+
+uint8_t clipString(char* str, int24_t width) {
+    uint8_t index;
+    for(index = 0; str[index] && width; index++) {
+        width -= gfx_GetCharWidth(str[index]);
+    }
+    return index - 1;
 }

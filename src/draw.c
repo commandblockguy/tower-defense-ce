@@ -104,6 +104,25 @@ void drawUI(void) {
 
     gfx_HorizLine(0, LCD_HEIGHT - F_BTN_HEIGHT, LCD_WIDTH);
 
+    if(game.status != PATH_EDIT) {
+        static uint8_t state;
+
+        gfx_SetTextXY(1, LCD_HEIGHT - (F_BTN_HEIGHT + TEXT_HEIGHT) / 2);
+
+        if(state < 255 / 3) {
+            gfx_PrintString("Wave ");
+            gfx_PrintUInt(game.waveNumber + 1, 3);
+        } else if(state < 255 / 3 * 2) {
+            gfx_PrintUInt(game.numEnemies, 3);
+            gfx_PrintString(" enemies");
+        } else {
+            gfx_PrintString("Spacing: ");
+            gfx_PrintUInt(enemies[game.numEnemies - 1].offset / (game.numEnemies - 1), 2);
+        }
+
+        state++;
+    }
+
     switch(game.status) {
         case(PRE_WAVE):
             drawButton(2, 2, false, "Edit Path");

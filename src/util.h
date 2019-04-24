@@ -47,4 +47,6 @@ void closestOnLine(lineSeg_t *l, uint24_t x, uint8_t y, uint24_t *rX, uint8_t *r
 bool lineSegEqu(lineSeg_t *ls1, lineSeg_t *ls2);
 uint24_t length(lineSeg_t *ls);
 
+uint8_t clipString(char* str, int24_t width);
+
 #endif

@@ -57,6 +57,11 @@ void processPhysics(void) {
         
         //  Set status back to PRE_WAVE
         game.status = PRE_WAVE;
+
+        game.waveNumber++;
+
+        // Spawn the next wave's enemies
+        spawnEnemies(game.waveNumber);
     }
 }
 

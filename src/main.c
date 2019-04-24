@@ -41,7 +41,7 @@ const uint24_t XP_DIST      = LCD_HEIGHT * 10;
 const uint8_t BASE_XP       = 3;
 
 void main(void);
-int24_t play(void);
+int24_t play(bool resume);
 void saveAppvar(void);
 
 extern uint16_t pathBufX[255]; // These are used when editing the path
@@ -69,8 +69,6 @@ void main(void) {
     gfx_SetDrawBuffer();
     gfx_SetPalette(gfx_group_pal, sizeof_gfx_group_pal, 0);
 
-    reader(&rf_test);
-
     // Display the menu
     mainMenu();
 
@@ -85,7 +83,7 @@ void main(void) {
 //  Press delete over a point to remove it
 
 // Returns the score, or -1 if exiting due to clear being pressed
-int24_t play(void) {
+int24_t play(bool resume) {
     // Actual game stuff
     int i;
     bool carry = false;
@@ -97,6 +95,8 @@ int24_t play(void) {
 
     bool updatedPath = true; // True if the player has changed the path
 
+    // TODO: resume game
+
     initTowers();
 
     // Reset game variables
@@ -107,6 +107,8 @@ int24_t play(void) {
 
     resetPathBuffer();
     updatePath();
+
+    spawnEnemies(0);
 
     // Repeats with each new wave
     while(game.lives) {
@@ -161,7 +163,7 @@ int24_t play(void) {
             drawPath();
             drawTowers(csrX, csrY);
         }
-        // TODO: draw enemies
+        // Draw enemies
         if(game.status == WAVE) {
             drawEnemies();
         }
@@ -372,8 +374,6 @@ int24_t play(void) {
 
                         dbg_sprintf(dbgout, "XP amount is %u\n", game.xpAmt);
                     }
-
-                    spawnEnemies(game.waveNumber);
 
                     // Reset enemy progression
                     game.enemyOffset.combined = 0;

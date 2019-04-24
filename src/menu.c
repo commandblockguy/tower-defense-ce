@@ -14,34 +14,86 @@
 #include <debug.h>
 
 #include "gfx/colors.h"
+#include "gfx/gfx_group.h"
+#include "gfx/group_about.h"
 #include "globals.h"
 #include "util.h"
 #include "enemy.h"
 #include "tower.h"
 #include "draw.h"
 #include "menu.h"
+#include "reader.h"
 
 // from main.c
-int24_t play(void);
+int24_t play(bool resume);
 
 extern const char *statNames[];
 
+extern const readerFile_t rf_howto;
+extern const readerFile_t rf_about;
+
 void mainMenu(void) {
+    int8_t selection = 0;
     // TODO: do menu stuff
-    // check if there is a game to resume
+    // TODO: check if there is a game to resume
+
+    // TODO: setup graphics
 
     // Menu loop
-    // Render fancy menu background
-    // Handle keyboard inputs
-    // Draw the options
+    while(true) {
 
-    /* Options:
-        Resume
-        New Game
-        High Scores
-        Exit
-    */
-    play(); //temp
+        kb_Scan();
+
+        // Handle keyboard inputs
+        if(kb_IsDown(kb_KeyClear)) {
+            // Exit the main menu
+            break;
+        }
+
+        if(kb_IsDown(kb_KeyUp)) {
+            while(kb_IsDown(kb_KeyUp)) kb_Scan();
+            if(--selection < 0) selection = 5;
+        }
+        if(kb_IsDown(kb_KeyDown)) {
+            while(kb_IsDown(kb_KeyDown)) kb_Scan();
+            if(++selection > 5) selection = 0;
+        }
+
+        if(kb_IsDown(kb_Key2nd)) {
+            while(kb_IsDown(kb_Key2nd)) kb_Scan();
+            switch(selection) {
+                case(0): // Resume
+                    play(true);
+                case(1): // New Game
+                    play(false);
+                    break;
+                case(2): // High scores
+                    highScores();
+                    break;
+                case(3): // How-to
+                    reader(&rf_howto);
+                    break;
+                case(4): // About
+                    gfx_SetPalette(group_about_pal, sizeof_group_about_pal, 0);
+                    reader(&rf_about);
+                    gfx_SetPalette(gfx_group_pal, sizeof_gfx_group_pal, 0);
+                    break;
+                case(5): // Exit
+                    return;
+            }
+        }
+
+        // Render fancy menu background
+        // Draw the options
+
+        // temp
+        gfx_FillScreen(WHITE);
+        gfx_SetTextXY(1, 1);
+        gfx_SetTextFGColor(BLACK);
+        gfx_PrintUInt(selection, 1);
+
+        gfx_BlitBuffer();
+    }
 }
 
 void highScores(void) {
@@ -306,11 +358,12 @@ archetype_t selectTowerType(void) {
 
 // Used as a callback for the reader
 bool viewQR(gfx_sprite_t *sprite) {
+    const uint8_t border = 15;
     // QR codes are square, so we can just use the width
     uint8_t size = sprite->width;
     // Maximum size we can scale the image without making things non-square
     // or going off the top of the screen
-    uint8_t scale = LCD_HEIGHT / size;
+    uint8_t scale = (LCD_HEIGHT - border * 2) / size;
 
     uint24_t x = (LCD_WIDTH - scale * size) / 2;
     uint8_t y = (LCD_HEIGHT - scale * size) / 2;
@@ -320,6 +373,9 @@ bool viewQR(gfx_sprite_t *sprite) {
 
     // Wait for a keypress
     while(!os_GetCSC());
+
+    // Wait for key to be released
+    while(os_GetCSC());
     // Don't exit the reader
     return false;
 }
