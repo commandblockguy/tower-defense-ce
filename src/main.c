@@ -24,7 +24,7 @@
 #include "globals.h"
 #include "gfx/colors.h"
 #include "gfx/gfx_group.h"
-#include "draw.h"
+#include "graphics.h"
 #include "util.h"
 #include "tower.h"
 #include "enemy.h"
@@ -59,7 +59,6 @@ uint8_t  csrY = LCD_HEIGHT / 2;
 uint24_t ticks;
 
 void main(void) {
-    int i; //temp
     dbg_sprintf(dbgout, "\n\nProgram Started\n");
     // Seed the RNG
     srand(rtc_Time());
@@ -95,20 +94,22 @@ int24_t play(bool resume) {
 
     bool updatedPath = true; // True if the player has changed the path
 
-    // TODO: resume game
+    if(resume) {
+        // TODO: resume game
+    } else {
+        initTowers();
 
-    initTowers();
+        // Reset game variables
+        game.lives = NUM_LIVES;
+        game.status = PRE_WAVE; // Whether the game is pre-wave, paused, or wave
+        game.score = 0;
+        game.waveNumber = 0;
 
-    // Reset game variables
-    game.lives = NUM_LIVES;
-    game.status = PRE_WAVE; // Whether the game is pre-wave, paused, or wave
-    game.score = 0;
-    game.waveNumber = 0;
+        resetPathBuffer();
+        updatePath();
 
-    resetPathBuffer();
-    updatePath();
-
-    spawnEnemies(0);
+        spawnEnemies(0);
+    }
 
     // Repeats with each new wave
     while(game.lives) {
@@ -120,6 +121,8 @@ int24_t play(bool resume) {
 
         // Exit if clear is pressed
         if(kb_IsDown(kb_KeyClear)) {
+            // Wait for key to be released
+            while(kb_IsDown(kb_KeyClear)) kb_Scan();
             // If editing path:
             if(game.status == PATH_EDIT) {
                 // Discard path without saving
@@ -128,8 +131,6 @@ int24_t play(bool resume) {
                 saveAppvar();
                 return -1;
             }
-            // Wait for key to be released
-            while(kb_IsDown(kb_KeyClear)) kb_Scan();
         }
 
         if(game.status == WAVE) {
@@ -151,6 +152,7 @@ int24_t play(bool resume) {
         }
 
         // Draw background
+        // TODO: fancy sprites for a background?
         gfx_FillScreen(BACKGROUND_COLOR);
         // Draw path
         if(game.status == PATH_EDIT) {
@@ -199,6 +201,7 @@ int24_t play(bool resume) {
         if(csrY > 250)        csrY += LCD_HEIGHT; // hacky check for  overflow
         if(csrY > LCD_HEIGHT) csrY -= LCD_HEIGHT;
 
+        // Handle alpha presses
         if(kb_IsDown(kb_KeyAlpha) && game.status == PATH_EDIT && !carry) {
             int index;
             circle_t c;
@@ -222,6 +225,7 @@ int24_t play(bool resume) {
             }
         }
 
+        // Handle del presses
         if(kb_IsDown(kb_KeyDel) && game.status == PATH_EDIT && !carry) {
             int index;
             circle_t c;
@@ -247,6 +251,7 @@ int24_t play(bool resume) {
             // If not, set error bits
         }
 
+        // Handle 2nd presses
         if(kb_IsDown(kb_Key2nd) || kb_IsDown(kb_KeyEnter)) {
             // Click detected
 
@@ -350,12 +355,49 @@ int24_t play(bool resume) {
         if(game.status == PATH_EDIT && carry) {
             // If carrying a point, move the point to the cursor position
             pathBufX[selectedIndex] = csrX;
-            pathBufY[selectedIndex] = csrY;
-            if(selectedIndex == 0 || selectedIndex == bufSize + 1) {
-                //TODO: If the carried point is the start or end point, snap to the nearest edge
+            // If the point is over the buttons, clip it to inside the play area
+            pathBufY[selectedIndex] = csrY > LCD_HEIGHT - F_BTN_HEIGHT ? LCD_HEIGHT - F_BTN_HEIGHT : csrY;
+            if(selectedIndex == 0 || selectedIndex == bufSize - 1) {
+                // TODO: replace with casting a point out of the middle?
+                //  Would be less confusing, but slower
+                // If the carried point is the start or end point, snap to the nearest edge
+                // Check top
+                uint24_t lowDist = csrY;
+                pathBufX[selectedIndex] = csrX;
+                pathBufY[selectedIndex] = 0;
+                // Check left
+                if(csrX < lowDist) {
+                    lowDist = csrX;
+                    pathBufX[selectedIndex] = 0;
+                    pathBufY[selectedIndex] = csrY;
+                }
+                // Check bottom
+                if(LCD_HEIGHT - F_BTN_HEIGHT - csrY < lowDist) {
+                    lowDist = LCD_HEIGHT - F_BTN_HEIGHT - csrY;
+                    pathBufX[selectedIndex] = csrX;
+                    pathBufY[selectedIndex] = LCD_HEIGHT - F_BTN_HEIGHT;
+                }
+                // Check right
+                if(LCD_WIDTH - csrX < lowDist) {
+                    lowDist = LCD_WIDTH - csrX;
+                    pathBufX[selectedIndex] = LCD_WIDTH;
+                    pathBufY[selectedIndex] = csrY;
+                }
             }
+
+            // Check point and segments
+            // Check returns true if OK, but error bits are true if *not* OK
+            setBit(pathBufPtErr, selectedIndex, !checkBufPoint(selectedIndex));
+            
+            setBit(pathBufSegErr, selectedIndex, !checkBufSegment(selectedIndex));
+
+            // Check the preceding segment if it exists
+            if(selectedIndex)
+                setBit(pathBufSegErr, selectedIndex - 1, !checkBufSegment(selectedIndex - 1));
+            
         }
 
+        // Handle fKey clicks
         switch(game.status) {
             case(PRE_WAVE):
                 if(fKey == kb_Trace || fKey == kb_Graph) {

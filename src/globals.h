@@ -49,14 +49,6 @@ struct gameData {
 // Global vars
 
 extern struct gameData game;
-extern pathPoint_t *path;
-
-extern uint16_t pathBufX[255];
-extern uint8_t pathBufY[255];
-extern char pathBufErr[32];
-extern uint8_t bufSize;
-
-extern tower_t towers[NUM_TOWERS];
 
 // Upper 24 bits of the timer
 // 128 cycles / second

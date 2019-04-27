@@ -115,19 +115,6 @@ bool lineSegEqu(lineSeg_t *ls1, lineSeg_t *ls2) {
     return memcmp(ls1, ls2, sizeof(*ls1)) == 0;
 }
 
-// Insert the bit value into the (offset)th bit of array[index], shifting the bit that was there
-// and all others after it up until array[size] to the right by one
-// TODO: write in assembly where this is actually easier due to how flags work
-void insertBoolArray(bool value, char* array, uint8_t index, uint8_t offset, uint8_t size) {
-
-}
-
-// Delete the (offset)th bit of array[index], shifting all bits after it up until array[size] left by one
-// TODO: write in assembly where this is actually easier due to how flags work
-void removeBoolArray(char* array, uint8_t index, uint8_t offset, uint8_t size) {
-
-}
-
 uint24_t length(lineSeg_t *ls) {
     return distBetween(ls->x1, ls->y1, ls->x2, ls->y2);
 }
@@ -138,4 +125,40 @@ uint8_t clipString(char* str, int24_t width) {
         width -= gfx_GetCharWidth(str[index]);
     }
     return index - 1;
+}
+
+bool linesCollide(lineSeg_t* l1, lineSeg_t* l2) {
+    int24_t p0_x = l1->x1, p1_x = l1->x2, p2_x = l2->x1, p3_x = l2->x2;
+    int24_t p0_y = l1->y1, p1_y = l1->y2, p2_y = l2->y1, p3_y = l2->y2;
+    int24_t s1_x, s1_y, s2_x, s2_y;
+    int24_t d, s, t;
+    s1_x = p1_x - p0_x;
+    s1_y = p1_y - p0_y;
+    s2_x = p3_x - p2_x;
+    s2_y = p3_y - p2_y;
+
+    d = -s2_x * s1_y + s1_x * s2_y;
+    s = -s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y);
+    t =  s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x);
+
+    return ((s >= 0) == (d >= 0) && abs(s) <= abs(d) && (t >= 0) == (d >= 0) && abs(t) <= abs(d));
+}
+
+void setBit(uint8_t *array, uint24_t offset, bool value) {
+    uint8_t pos = offset / 8;
+    uint8_t shift = 7 - offset % 8;
+    uint8_t mask = 1 << shift;
+    if(value) {
+        array[pos] |= mask;
+    } else {
+        array[pos] &= ~mask;
+    }
+}
+
+bool getBit(uint8_t *array, uint24_t offset) {
+    uint8_t pos = offset / 8;
+    uint8_t shift = 7 - offset % 8;
+    uint8_t mask = 1 << shift;
+
+    return array[pos] & mask;
 }

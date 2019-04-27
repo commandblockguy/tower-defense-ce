@@ -55,8 +55,6 @@ void reader(readerFile_t *file) {
             currentLine = 0;
         }
 
-        // TODO: check if link is pressed
-
         // Graphics stuff
 
         gfx_FillScreen(file->bgColor);
@@ -93,6 +91,7 @@ void reader(readerFile_t *file) {
             }
         }
 
+        // TODO: make it easier to click multiple links on one screen
         if(file->numLinks) {
             i = firstAfter(currentLine, file->links, file->numLinks, sizeof(file->links[0]));
 

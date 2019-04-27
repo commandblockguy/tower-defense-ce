@@ -29,5 +29,14 @@ int8_t updatePath(void);
 void initBuffer(void);
 void reverseBuffer(void);
 bool checkPath(void);
+bool checkBufPoint(uint8_t index);
+bool checkBufSegment(uint8_t index);
+
+extern uint16_t pathBufX[255]; // These are used when editing the path
+extern uint8_t pathBufY[255];
+extern uint8_t pathBufSegErr[32]; // Each bit corresponds to whether the segment following that point has an error
+extern uint8_t pathBufPtErr[32]; // Each bit corresponds to whether the point has an error
+extern uint8_t bufSize; // Number of elements in the path buffer
+extern pathPoint_t *path; // Path rendering is done with this
 
 #endif

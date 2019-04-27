@@ -7,8 +7,8 @@ enum COLORS {
     RED = 3,
     XP_COLOR = 4,
     HIGHLIGHT_COLOR = 5,
-    BACKGROUND_COLOR = WHITE,
-    PATH_COLOR = BLACK
+    BACKGROUND_COLOR = 6,
+    PATH_COLOR = 7
 };
 
 #endif

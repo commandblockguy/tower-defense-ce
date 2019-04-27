@@ -18,10 +18,9 @@
 #include "util.h"
 #include "enemy.h"
 #include "tower.h"
-#include "draw.h"
+#include "graphics.h"
 
 // Various draw and menu functions
-// TODO: rename to graphics.c?
 
 // TODO: add some sort of fancy background
 
@@ -67,6 +66,7 @@ void drawTower(tower_t *tower, uint24_t x, uint8_t y, uint8_t scale, bool range)
 
 void drawPath(void) {
     // Loop through all path points
+    // TODO: thicc-er lines
     int i;
 
     gfx_SetColor(PATH_COLOR);
@@ -79,9 +79,16 @@ void drawPathBuffer(void) {
     int i;
     gfx_SetColor(PATH_COLOR);
     // Loop through all lines
+    // TODO: thicc-er lines
     for(i = 0; i < bufSize - 1; i++) {
         // Check if there is an error
-        if(pathBufErr[i / 8] & (1 << (i % 8))) {
+        if(getBit(pathBufPtErr, i)) {
+            // Draw a red dot to indicate the invalid point
+            gfx_SetColor(RED);
+            gfx_Circle(pathBufX[i], pathBufY[i], 5);
+            gfx_SetColor(PATH_COLOR);
+        }
+        if(getBit(pathBufSegErr, i)) {
             // Draw in red if there is an error
             gfx_SetColor(RED);
             gfx_Line(pathBufX[i], pathBufY[i], pathBufX[i+1], pathBufY[i+1]);
@@ -97,6 +104,9 @@ void drawUI(void) {
 
     // Maybe I should generalize this so that each button has a function that is called when it
     // is pressed, and an array is read instead of a switch/case and function calls to make the UI 
+
+    gfx_SetColor(WHITE);
+    gfx_FillRectangle(0, LCD_HEIGHT - F_BTN_HEIGHT + 1, LCD_WIDTH, F_BTN_HEIGHT - 1);
 
     gfx_SetColor(BLACK);
     gfx_SetTextFGColor(BLACK);

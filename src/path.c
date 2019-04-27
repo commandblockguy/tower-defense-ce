@@ -8,11 +8,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <debug.h>
+
 #include "globals.h"
 
 uint16_t pathBufX[255]; // These are used when editing the path
 uint8_t pathBufY[255];
-char pathBufErr[32]; // Each bit corresponds to whether the segment following that point has an error
+uint8_t pathBufSegErr[32]; // Each bit corresponds to whether the segment following that point has an error
+uint8_t pathBufPtErr[32]; // Each bit corresponds to whether the point has an error
 uint8_t bufSize; // Number of elements in the path buffer
 pathPoint_t *path; // Path rendering is done with this
 
@@ -26,7 +29,10 @@ void resetPathBuffer(void) {
     pathBufX[1] = LCD_WIDTH / 2;
     pathBufY[1] = 0;
 
-    pathBufErr[0] = 0;
+    // The points themselves should always be valid
+    pathBufPtErr[0] = 0;
+    // If the segment is not valid, set the error bit
+    setBit(pathBufSegErr, 0, !checkBufSegment(0));
 }
 
 void initBuffer(void) {
@@ -66,8 +72,6 @@ int8_t updatePath(void) {
     uint8_t lastY = pathBufY[0];
     int i;
 
-    //TODO: If an endpoint is not on the edge of the playing area, extend that line out until it is
-
     //TODO: Verify that the path is valid, e.g.
     //  no crossings - maybe enforce this while editing?
     //  no sharp angles (>90)
@@ -98,5 +102,75 @@ int8_t updatePath(void) {
 
 // TODO: returns true if path is valid
 bool checkPath(void) {
+    uint8_t i;
+    // Initialize the buffer to mirror the path
+    initBuffer();
+    // Check each point
+    for(i = 0; i < bufSize; i++) {
+        // Set error bits
+    }
+    return true;
+}
+
+
+// return true if point in buffer is valid
+bool checkBufPoint(uint8_t index) {
+    // Special case if first or last point
+    if(!index || index == bufSize - 1) {
+        // Check if at least one coordinate is 0 or max
+        return !pathBufX[index] ||
+            pathBufX[index] == LCD_WIDTH ||
+            !pathBufY[index] ||
+            pathBufY[index] == LCD_HEIGHT - F_BTN_HEIGHT;
+    }
+    // Check if on screen
+    if(pathBufX[index] > LCD_WIDTH) return false;
+    if(pathBufY[index] > LCD_HEIGHT - F_BTN_HEIGHT) return false;
+
+    // TODO: angle stuff?
+
+    return true;
+}
+
+// return true if segment in buffer is valid
+bool checkBufSegment(uint8_t index) {
+    uint8_t i;
+    lineSeg_t seg;
+
+    dbg_sprintf(dbgout, "Checking segment %u\n", index);
+
+    seg.x1 = pathBufX[index];
+    seg.x2 = pathBufX[index+1];
+    seg.y1 = pathBufY[index];
+    seg.y2 = pathBufY[index+1];
+
+    // Special case if last point
+    if(index == bufSize - 1) {
+        return false;
+    }
+    // Check if the segment overlaps any other line
+    for(i = 0; i < bufSize - 2; i++) {
+        lineSeg_t other;
+        other.x1 = pathBufX[i];
+        other.x2 = pathBufX[i+1];
+        other.y1 = pathBufY[i];
+        other.y2 = pathBufY[i+1];
+
+        if(linesCollide(&seg, &other))
+            return false;
+    }
+    // Check if the segment overlaps any tower
+    for(i = 0; i < NUM_TOWERS; i++) {
+        circle_t c;
+        c.x = towers[i].posX;
+        c.y = towers[i].posY;
+        c.radius = TOWER_RADIUS + PATH_WIDTH / 2;
+
+        if(circCollidesSeg(&c, &seg, NULL))
+            return false;
+    }
+
+    dbg_sprintf(dbgout, "Segment's fine.\n");
+
     return true;
 }

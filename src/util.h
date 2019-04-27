@@ -46,7 +46,16 @@ bool ptOnSegment(uint24_t x, uint8_t y, lineSeg_t *l);
 void closestOnLine(lineSeg_t *l, uint24_t x, uint8_t y, uint24_t *rX, uint8_t *rY);
 bool lineSegEqu(lineSeg_t *ls1, lineSeg_t *ls2);
 uint24_t length(lineSeg_t *ls);
+bool linesCollide(lineSeg_t* l1, lineSeg_t* l2);
 
 uint8_t clipString(char* str, int24_t width);
+void setBit(uint8_t* array, uint24_t offset, bool value);
+bool getBit(uint8_t* array, uint24_t offset);
+
+// Insert the bit value into the (offset)th bit of array[index], shifting the bit that was there
+// and all others after it up until array[size] to the right by one
+void insertBoolArray(bool value, char* array, uint8_t index, uint8_t offset, uint8_t size);
+// Delete the (offset)th bit of array[index], shifting all bits after it up until array[size] left by one
+void removeBoolArray(char* array, uint8_t index, uint8_t offset, uint8_t size);
 
 #endif

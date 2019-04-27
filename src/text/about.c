@@ -35,7 +35,7 @@ const text_t rf_text_about[] = {
 const fancyText_t rf_fancy_about[] = {
     {1, "About", 2, WHITE, 3, 3},
     {8, "Questions?", 2, WHITE, 2, 2},
-    {19, "Credits:"},
+    {19, "Credits:", 2, WHITE, 2, 2},
 };
 
 const image_t rf_images_about[] = {
