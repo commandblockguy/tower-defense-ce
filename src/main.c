@@ -156,6 +156,15 @@ int24_t play(bool resume) {
             } else {
                 uint8_t i;
 
+                // Free tower ranges to make things easier later
+                for(i = 0; i < NUM_TOWERS; i++) {
+                    if(towers[i].numRanges)
+                        free(towers[i].ranges);
+                    towers[i].ranges = NULL;
+                }
+
+                dbg_sprintf(dbgout, "freed tower ranges.\n");
+
                 // Save the game so it can be resumed later
                 saveAppvar();
 
@@ -170,14 +179,6 @@ int24_t play(bool resume) {
                 path = NULL;
 
                 dbg_sprintf(dbgout, "freed p+e.\n");
-
-                for(i = 0; i < NUM_TOWERS; i++) {
-                    if(towers[i].numRanges)
-                        free(towers[i].ranges);
-                    towers[i].ranges = NULL;
-                }
-
-                dbg_sprintf(dbgout, "freed tower ranges.\n");
 
                 return -1;
             }
