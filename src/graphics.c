@@ -70,8 +70,32 @@ void drawPath(void) {
     int i;
 
     gfx_SetColor(PATH_COLOR);
+
+    // TODO: draw the circle at the first point
+
     for(i = 1; i < game.numPathPoints; i++) {
-        gfx_Line(path[i].posX, path[i].posY, path[i - 1].posX, path[i - 1].posY);
+        int24_t x1 = path[i].posX;
+        int24_t y1 = path[i].posY;
+        int24_t x2 = path[i-1].posX;
+        int24_t y2 = path[i-1].posY;
+
+
+        // Get the length of the line segment
+        //int24_t length = distBetween(x1, y1, x2, y2);
+
+        // Find the offset from the actual path to the edge of the path
+        //int24_t offsetX = (PATH_WIDTH / 2) * (y2 - y1) / length;
+        //int24_t offsetY = (PATH_WIDTH / 2) * (x2 - x1) / length;
+
+        //dbg_sprintf(dbgout, "(%i, %i)\n", offsetX, offsetY);
+
+        // 1- 1+
+        // 2- 2+ 
+        // TODO: y u so slow???
+        //gfx_FillTriangle_NoClip(x1 - offsetX, y1 - offsetY, x1 + offsetX, y1 + offsetY, x2 + offsetX, y2 + offsetY);
+        //gfx_FillTriangle_NoClip(x1 - offsetX, y1 - offsetY, x2 - offsetX, y2 - offsetY, x2 + offsetX, y2 + offsetY);
+
+        gfx_Line(x1, y1, x2, y2);
     }
 }
 
@@ -119,15 +143,18 @@ void drawUI(void) {
 
         gfx_SetTextXY(1, LCD_HEIGHT - (F_BTN_HEIGHT + TEXT_HEIGHT) / 2);
 
-        if(state < 255 / 3) {
+        if(state < 255 / 4) {
             gfx_PrintString("Wave ");
             gfx_PrintUInt(game.waveNumber + 1, 3);
-        } else if(state < 255 / 3 * 2) {
+        } else if(state < 255 / 4 * 2) {
             gfx_PrintUInt(game.numEnemies, 3);
             gfx_PrintString(" enemies");
-        } else {
+        } else if(state < 255 / 4 * 3) {
             gfx_PrintString("Spacing: ");
             gfx_PrintUInt(enemies[game.numEnemies - 1].offset / (game.numEnemies - 1), 2);
+        } else {
+            gfx_PrintString("Lives: ");
+            gfx_PrintUInt(game.lives, 2);
         }
 
         state++;

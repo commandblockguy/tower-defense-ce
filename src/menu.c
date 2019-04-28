@@ -20,12 +20,13 @@
 #include "util.h"
 #include "enemy.h"
 #include "tower.h"
-#include "draw.h"
+#include "graphics.h"
 #include "menu.h"
 #include "reader.h"
 
 // from main.c
 int24_t play(bool resume);
+bool appvarExists(void);
 
 extern const char *statNames[];
 
@@ -34,8 +35,10 @@ extern const readerFile_t rf_about;
 
 void mainMenu(void) {
     int8_t selection = 0;
+    bool saveExists;
     // TODO: do menu stuff
     // TODO: check if there is a game to resume
+    saveExists = appvarExists();
 
     // TODO: setup graphics
 
@@ -63,9 +66,14 @@ void mainMenu(void) {
             while(kb_IsDown(kb_Key2nd)) kb_Scan();
             switch(selection) {
                 case(0): // Resume
-                    play(true);
+                    if(saveExists) {
+                        play(true);
+                        saveExists = appvarExists();
+                    }
+                    break;
                 case(1): // New Game
                     play(false);
+                    saveExists = appvarExists();
                     break;
                 case(2): // High scores
                     highScores();
@@ -201,7 +209,7 @@ void towerEdit(tower_t *tower) {
         };
 
         // Draw the background
-        gfx_FillScreen(BACKGROUND_COLOR);
+        gfx_FillScreen(WHITE);
 
         // Line on top of the screen
         gfx_SetColor(BLACK);

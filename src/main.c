@@ -42,7 +42,8 @@ const uint8_t BASE_XP       = 3;
 
 void main(void);
 int24_t play(bool resume);
-void saveAppvar(void);
+bool saveAppvar(void);
+bool loadAppvar(void);
 
 extern uint16_t pathBufX[255]; // These are used when editing the path
 extern uint8_t pathBufY[255];
@@ -59,9 +60,17 @@ uint8_t  csrY = LCD_HEIGHT / 2;
 uint24_t ticks;
 
 void main(void) {
+    ti_var_t slot;
+    char temp[5] = {0, 0, 0, 0, 0};
     dbg_sprintf(dbgout, "\n\nProgram Started\n");
     // Seed the RNG
     srand(rtc_Time());
+
+    ti_CloseAll();
+
+    //temp
+    slot = ti_Open("test", "w");
+    ti_Write(temp, 1, 5, slot);
 
     // Set up graphics
     gfx_Begin();
@@ -84,7 +93,7 @@ void main(void) {
 // Returns the score, or -1 if exiting due to clear being pressed
 int24_t play(bool resume) {
     // Actual game stuff
-    int i;
+    uint8_t i;
     bool carry = false;
     uint8_t selectedIndex = 0;
     uint24_t carryOrigX;
@@ -95,8 +104,25 @@ int24_t play(bool resume) {
     bool updatedPath = true; // True if the player has changed the path
 
     if(resume) {
-        // TODO: resume game
+        uint8_t i;
+        // Resume game
+
+        // Load the appvar
+        if(!loadAppvar()) {
+            dbg_sprintf(dbgout, "Failed to load appvar\n");
+            return -1;
+        }
+
+        // Re-calculate tower ranges
+        for(i = 0; i < NUM_TOWERS; i++) {
+            dbg_sprintf(dbgout, "calc range %u...\n", i);
+            calcTowerRanges(&towers[i]);
+        }
+
+        // Reset ticks passed
+        resetTickTimer();
     } else {
+        // Start new game
         initTowers();
 
         // Reset game variables
@@ -128,7 +154,31 @@ int24_t play(bool resume) {
                 // Discard path without saving
                 game.status = PRE_WAVE;
             } else {
+                uint8_t i;
+
+                // Save the game so it can be resumed later
                 saveAppvar();
+
+                dbg_sprintf(dbgout, "saved.\n");
+
+                dbg_sprintf(dbgout, "freeing e: %p, p: %p\n", enemies, path);
+
+                // Handle memory stuff
+                free(enemies);
+                enemies = NULL;
+                free(path);
+                path = NULL;
+
+                dbg_sprintf(dbgout, "freed p+e.\n");
+
+                for(i = 0; i < NUM_TOWERS; i++) {
+                    if(towers[i].numRanges)
+                        free(towers[i].ranges);
+                    towers[i].ranges = NULL;
+                }
+
+                dbg_sprintf(dbgout, "freed tower ranges.\n");
+
                 return -1;
             }
         }
@@ -166,7 +216,7 @@ int24_t play(bool resume) {
             drawTowers(csrX, csrY);
         }
         // Draw enemies
-        if(game.status == WAVE) {
+        if(game.status == WAVE || game.status == PAUSED) {
             drawEnemies();
         }
         // Draw UI
@@ -319,7 +369,7 @@ int24_t play(bool resume) {
                     }
                 }
             } else {
-                int i;
+                uint8_t i;
                 // Check if we are over a tower
                 // Scan through all towers
                 for(i = 0; i < NUM_TOWERS; i++) {
@@ -401,6 +451,7 @@ int24_t play(bool resume) {
         switch(game.status) {
             case(PRE_WAVE):
                 if(fKey == kb_Trace || fKey == kb_Graph) {
+                    uint8_t i;
                     // Start the wave
                     if(updatedPath) {
                         int i;
@@ -457,6 +508,7 @@ int24_t play(bool resume) {
                         break;
                     case(kb_Zoom):
                         // Clear the buffer
+                        carry = false;
                         resetPathBuffer();
                         break;
                     case(kb_Trace):
@@ -481,16 +533,116 @@ int24_t play(bool resume) {
             } while(kb_Data[1]);
         }
     }
+
+    // Handle memory stuff
+    free(enemies);
+    enemies = NULL;
+    free(path);
+    path = NULL;
+
+    for(i = 0; i < NUM_TOWERS; i++) {
+        free(towers[i].ranges);
+        towers[i].ranges = NULL;
+    }
+
+    // Delete save appvar
+    ti_Delete(APPVAR);
+
     return game.score;
 }
 
-// TODO: implement
-void saveAppvar(void) {
+// Return true if success
+bool saveAppvar(void) {
+    ti_var_t slot;
+
+    // Open the file
+    slot = ti_Open(APPVAR, "w");
+
+    if(!slot) return false;
+
     // Save game struct to an appvar
+    ti_Write(&game, sizeof(game), 1, slot);
 
     // Save path
-    // Save enemies
+    ti_Write(path, sizeof(path[0]), game.numPathPoints, slot);
 
-    // Free path
-    // Free enemies
+    // Save enemies
+    ti_Write(enemies, sizeof(enemies[0]), game.numEnemies, slot);
+
+    // Save towers
+    ti_Write(towers, sizeof(towers[0]), NUM_TOWERS, slot);
+
+    ti_Close(slot);
+
+    return true;
 }
+
+bool appvarExists(void) {
+    ti_var_t slot;
+
+    // Open the file
+    slot = ti_Open(APPVAR, "r");
+
+    ti_Close(slot);
+
+    dbg_sprintf(dbgout, "slot %u\n", slot);
+
+    if(!slot) return false;
+
+    return true;
+}
+
+bool loadAppvar(void) {
+    ti_var_t slot;
+
+    // Open the file
+    slot = ti_Open(APPVAR, "r");
+
+    if(!slot) return false;
+
+    // Read game struct
+    ti_Read(&game, sizeof(game), 1, slot);
+
+    // Allocate memory
+    free(path);
+    free(enemies);
+    path = NULL;
+    enemies = NULL;
+    dbg_sprintf(dbgout, "freed p+e on load\n");
+    path = malloc(sizeof(path[0]) * game.numPathPoints);
+    enemies = malloc(sizeof(enemies[0]) * game.numEnemies);
+
+    // Read path
+    ti_Read(path, sizeof(path[0]), game.numPathPoints, slot);
+
+    // Read enemies
+    ti_Read(enemies, sizeof(enemies[0]), game.numEnemies, slot);
+
+    // Read towers
+    ti_Read(towers, sizeof(towers[0]), NUM_TOWERS, slot);
+
+    ti_Close(slot);
+
+    dbg_sprintf(dbgout, "save loaded\n");
+    dbg_sprintf(dbgout, "nE: %u, nP: %u\n", game.numEnemies, game.numPathPoints);
+    dbg_sprintf(dbgout, "e: %p, p: %p\n", enemies, path);
+
+    return true;
+}
+
+#undef malloc
+void *malloc2(size_t size) {
+    void *ptr;
+    dbg_sprintf(dbgout, "Allocating %u bytes at ", size);
+    ptr = malloc(size);
+    dbg_sprintf(dbgout, "%p\n", ptr);
+    return ptr;
+}
+#define malloc malloc2
+
+#undef free
+void free2(void* ptr) {
+    dbg_sprintf(dbgout, "Freeing %p\n", ptr);
+    free(ptr);
+}
+#define free free2

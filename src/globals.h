@@ -23,6 +23,13 @@
 #define ONE_SECOND 128
 #define TPC TPS / ONE_SECOND
 
+#define APPVAR "TDefSave"
+
+#define free free2
+#define malloc malloc2
+void free2(void *ptr);
+void *malloc2(size_t size);
+
 enum status {
     PRE_WAVE,
     PAUSED,
