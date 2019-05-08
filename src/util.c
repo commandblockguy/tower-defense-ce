@@ -25,6 +25,7 @@ uint24_t distBetween(uint24_t x1, uint8_t y1, uint24_t x2, uint8_t y2) {
 
 // thank you https://cp-algorithms.com/geometry/circle-line-intersection.html
 // TODO: maybe remove the float stuff?
+// TODO: handle trivial case (rectangle intersection)
 bool circCollidesSeg(circle_t *cr, lineSeg_t *l, lineSeg_t *inside) {
     // Use to store stuff temporarily in case *inside is null
     lineSeg_t temp;
@@ -35,20 +36,21 @@ bool circCollidesSeg(circle_t *cr, lineSeg_t *l, lineSeg_t *inside) {
     int24_t c = (l->x1-cr->x)*(l->y2-cr->y) - (l->x2-cr->x)*(l->y1-cr->y);
     float x0, y0;
 
-    x0 = -a*c/(a*a+b*b);
-    y0 = -b*c/(a*a+b*b);
+    float hyp = (a*a+b*b);
+
+    x0 = -a*c/hyp;
+    y0 = -b*c/hyp;
     //dbg_sprintf(dbgout, "\nLineseg (%i, %i), (%i, %i)\n", l->x1-cr->x, l->y1-cr->y, l->x2-cr->x, l->y2-cr->y);
     //dbg_sprintf(dbgout, "A: %i, B: %i, C: %i\n", a, b, c);
-    if((float)c*(float)c > cr->radius*cr->radius*(float)(a*a+b*b)) {
+    if((float)c*(float)c > cr->radius*cr->radius*hyp) {
         // Line misses circle entirely
         //dbg_sprintf(dbgout, "Misses circle completely\n");
         return false;
-    }
-    else {
+    } else {
         // Two points
 
-        float d = cr->radius*cr->radius - c*c/(a*a+b*b);
-        float mult = sqrt(d / (a*a+b*b));
+        float d = cr->radius*cr->radius - c*c/hyp;
+        float mult = sqrt(d / hyp);
         uint24_t ax, bx;
         uint8_t ay, by;
         // These two points represent where the extension of the segment intersects the circle
@@ -161,4 +163,46 @@ bool getBit(uint8_t *array, uint24_t offset) {
     uint8_t mask = 1 << shift;
 
     return array[pos] & mask;
+}
+
+void insertBoolArray(bool value, uint8_t* array, uint8_t index, uint8_t size) {
+    // Get index/offset of the first byte to change
+    uint8_t first = index / 8;
+    uint8_t offset = index % 8;
+
+    // Copy the first offset bits of the first byte
+    uint8_t copy = array[first] & (0xFF << 7 - offset);
+
+    uint8_t bytes = size / 8 - first + 1;
+
+    //dbg_sprintf(dbgout, "array: %p, index: %u, size: %u\n", array, index, size);
+    //dbg_sprintf(dbgout, "first: %u, offset: %u, copy: %u\n", first, offset, copy);
+    //dbg_sprintf(dbgout, "%p, %u\n", &array[first], bytes);
+
+    // Shift all bytes over
+    shiftBitsRight(&array[first], bytes);
+
+    // Replace the first bits of the first byte
+    array[first] = copy | (array[first] & (0xFF >> offset));
+}
+
+void removeBoolArray(uint8_t* array, uint8_t index, uint8_t size) {
+    // Get index/offset of the first byte to change
+    uint8_t first = index / 8;
+    uint8_t offset = index % 8;
+
+    // Copy the first offset bits of the first byte
+    uint8_t copy = array[first] & (0xFF << 7 - offset);
+
+    uint8_t bytes = size / 8 - first + 1;
+
+    dbg_sprintf(dbgout, "array: %p, index: %u, size: %u\n", array, index, size);
+    dbg_sprintf(dbgout, "first: %u, offset: %u, copy: %u\n", first, offset, copy);
+    dbg_sprintf(dbgout, "%p, %u\n", &array[first], bytes);
+
+    // Shift all bytes over
+    shiftBitsLeft(&array[first], bytes);
+
+    // Replace the first bits of the first byte
+    array[first] = copy | (array[first] & (0xFF >> offset));
 }

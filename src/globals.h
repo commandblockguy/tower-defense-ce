@@ -23,6 +23,20 @@
 #define ONE_SECOND 128
 #define TPC TPS / ONE_SECOND
 
+#define APPVAR "TDefSave"
+
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 1
+
+#define STRINGIFY(arg) #arg
+#define STR(arg) STRINGIFY(arg)
+
+#ifdef DEBUG
+#define VERSION_STRING (STR(VERSION_MAJOR) "." STR(VERSION_MINOR) "-debug")
+#else
+#define VERSION_STRING (STR(VERSION_MAJOR) "." STR(VERSION_MINOR))
+#endif
+
 enum status {
     PRE_WAVE,
     PAUSED,
@@ -49,6 +63,10 @@ struct gameData {
 // Global vars
 
 extern struct gameData game;
+
+// yeah these are globals but I am lazy
+extern uint24_t csrX;
+extern uint8_t csrY;
 
 // Upper 24 bits of the timer
 // 128 cycles / second

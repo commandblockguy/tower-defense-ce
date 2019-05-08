@@ -20,12 +20,15 @@
 #include "util.h"
 #include "enemy.h"
 #include "tower.h"
-#include "draw.h"
+#include "graphics.h"
 #include "menu.h"
 #include "reader.h"
 
+#define CSR_SPEED (ONE_SECOND * 256 / 64)
+
 // from main.c
 int24_t play(bool resume);
+bool appvarExists(void);
 
 extern const char *statNames[];
 
@@ -34,13 +37,30 @@ extern const readerFile_t rf_about;
 
 void mainMenu(void) {
     int8_t selection = 0;
-    // TODO: do menu stuff
-    // TODO: check if there is a game to resume
+    bool saveExists;
+    saveExists = appvarExists();
 
     // TODO: setup graphics
 
+    // Start the timer
+    timer_Control &= ~TIMER1_ENABLE;
+    timer_1_Counter = 0;
+    timer_Control |= TIMER1_ENABLE | TIMER1_32K | TIMER1_UP;
+
     // Menu loop
     while(true) {
+        uint8_t i;
+
+        const uint8_t NUM_OPTIONS = 6;
+        // Remember to update this next line too; the compiler is stupid
+        const char* options[6] = {
+            "Resume",
+            "New Game",
+            "Scores",
+            "How-To",
+            "About",
+            "Exit"
+        };
 
         kb_Scan();
 
@@ -52,20 +72,25 @@ void mainMenu(void) {
 
         if(kb_IsDown(kb_KeyUp)) {
             while(kb_IsDown(kb_KeyUp)) kb_Scan();
-            if(--selection < 0) selection = 5;
+            if(--selection < 0) selection = NUM_OPTIONS - 1;
         }
         if(kb_IsDown(kb_KeyDown)) {
             while(kb_IsDown(kb_KeyDown)) kb_Scan();
-            if(++selection > 5) selection = 0;
+            if(++selection > NUM_OPTIONS - 1) selection = 0;
         }
 
         if(kb_IsDown(kb_Key2nd)) {
             while(kb_IsDown(kb_Key2nd)) kb_Scan();
             switch(selection) {
                 case(0): // Resume
-                    play(true);
+                    if(saveExists) {
+                        play(true);
+                        saveExists = appvarExists();
+                    }
+                    break;
                 case(1): // New Game
                     play(false);
+                    saveExists = appvarExists();
                     break;
                 case(2): // High scores
                     highScores();
@@ -83,14 +108,39 @@ void mainMenu(void) {
             }
         }
 
-        // Render fancy menu background
-        // Draw the options
-
-        // temp
+        // TODO: Render fancy menu background
+        // Render hills at various distances using parallax
+        // This may cause minor visual glitches if you leave
+        // the main menu open for an inordinate amount of time
+        // ticks per pixel = distance from camera / speed 
+        // x = (timer / ticks per pixel) % LCD_WIDTH
         gfx_FillScreen(WHITE);
-        gfx_SetTextXY(1, 1);
-        gfx_SetTextFGColor(BLACK);
-        gfx_PrintUInt(selection, 1);
+        gfx_SetTextScale(1, 1);
+
+        // Draw the options
+        for(i = 0; i < NUM_OPTIONS; i++) {
+            const uint8_t boxSpacing = 5;
+            const uint8_t boxHeight = (2 * LCD_HEIGHT / 3 + boxSpacing) / NUM_OPTIONS - boxSpacing;
+            const uint8_t boxWidth = LCD_WIDTH / 4;
+            uint8_t textWidth;
+            // TODO: maybe some gravity / bounciness to this?
+            uint8_t boxPosY = LCD_HEIGHT / 6 + (boxHeight + boxSpacing) * i;
+
+            gfx_SetColor(WHITE);
+            gfx_FillRectangle((LCD_WIDTH - boxWidth) / 2, boxPosY, boxWidth, boxHeight);
+            gfx_SetColor(BLACK);
+            gfx_Rectangle((LCD_WIDTH - boxWidth) / 2, boxPosY, boxWidth, boxHeight);
+
+            // TODO: sign colors
+            if(i == selection) gfx_SetTextFGColor(HIGHLIGHT_COLOR);
+            else gfx_SetTextFGColor(BLACK);
+
+            textWidth = gfx_GetStringWidth(options[i]);
+
+            gfx_SetTextXY((LCD_WIDTH - textWidth) / 2, boxPosY + (boxHeight - TEXT_HEIGHT) / 2);
+            gfx_PrintString(options[i]);
+        }
+        
 
         gfx_BlitBuffer();
     }
@@ -105,7 +155,6 @@ void highScores(void) {
     // Wait for keypress
 }
 
-// TODO: finish
 void towerEdit(tower_t *tower) {
     uint8_t animTime = 9;
     uint8_t level = xpToLevel(tower->xp);
@@ -201,7 +250,7 @@ void towerEdit(tower_t *tower) {
         };
 
         // Draw the background
-        gfx_FillScreen(BACKGROUND_COLOR);
+        gfx_FillScreen(WHITE);
 
         // Line on top of the screen
         gfx_SetColor(BLACK);
@@ -378,4 +427,51 @@ bool viewQR(gfx_sprite_t *sprite) {
     while(os_GetCSC());
     // Don't exit the reader
     return false;
+}
+
+void initCursor(void) {
+    timer_Control &= ~TIMER2_ENABLE;
+    timer_2_Counter = 0;
+    timer_Control |= TIMER2_ENABLE | TIMER2_32K | TIMER2_UP;
+}
+
+void updateCursor(void) {
+    // Move the cursor around
+    // TODO: acceleration?
+    //  (I always say this and then never do it)
+    kb_key_t keys;
+    uint24_t dist;
+
+    // Arrow keys
+    keys = kb_Data[7];
+
+    // Enable the timer
+    timer_Control &= ~TIMER2_ENABLE;
+
+    //dbg_sprintf(dbgout, "Updating cursor pos\n");
+    //dbg_sprintf(dbgout, "Speed is %u, timer is %u\n", CSR_SPEED, timer_2_Counter);
+
+    dist = timer_2_Counter / CSR_SPEED;
+
+    //dbg_sprintf(dbgout, "Dist: %u\n", dist);
+
+    if(keys && dist && timer_2_Counter < ONE_SECOND * 256) {
+        //dbg_sprintf(dbgout, "Key is pressed or whatever\n");
+
+        // Process individual keys
+        if(keys & kb_Left ) csrX -= dist;
+        if(keys & kb_Right) csrX += dist;
+        if(keys & kb_Up   ) csrY -= dist;
+        if(keys & kb_Down ) csrY += dist;
+
+        // Check if the cursor went offscreen
+        if(csrX > 500)        csrX += LCD_WIDTH ; // hacky check for underflow
+        if(csrX > LCD_WIDTH ) csrX -= LCD_WIDTH ;
+        if(csrY > 250)        csrY += LCD_HEIGHT; // hacky check for  overflow
+        if(csrY > LCD_HEIGHT) csrY -= LCD_HEIGHT;
+
+    }
+
+    timer_2_Counter -= CSR_SPEED * dist;
+    timer_Control |= TIMER2_ENABLE;
 }

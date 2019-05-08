@@ -70,7 +70,7 @@ void initTowers(void) {
         }
         towers[i].posX = maxX;
         towers[i].posY = maxY;
-        // On second thought bridson's doesn't seem that much more complicated. Whatever.
+        // On second thought, bridson's doesn't seem that much more complicated. Whatever.
 
         // set up tower upgrades, level, XP, stats, etc.
         tower->xp = 0;
@@ -79,13 +79,15 @@ void initTowers(void) {
         tower->upgrades[2] = 0;
         tower->spentLevels = 0;
         tower->archetype = STANDARD; // TODO: default to standard or random or NONE?
-        tower->targetType = FIRST; // TODO: first
+        tower->targetType = FIRST;
         tower->ranges = NULL;
+        tower->numRanges = 0;
+        tower->cooldown = 0;
         calcTowerStats(&towers[i]);
     }
 }
 
-// TODO: Calculate the ranges of the path that the tower can hit
+// Calculate the ranges of the path that the tower can hit
 void calcTowerRanges(tower_t *tower) {
     int i;
     // Temporary memory to stick ranges in
@@ -165,9 +167,11 @@ void calcTowerRanges(tower_t *tower) {
     // Allocate memory for the path range and copy the data into it
     // Set the tower's ranges and numRanges
     //dbg_sprintf(dbgout, "Total ranges: %u\n", numRanges);
-    free(tower->ranges);
-    tower->ranges = malloc(sizeof(tower->ranges[0]) * numRanges);
-    memcpy(tower->ranges, ranges, sizeof(tower->ranges[0]) * numRanges);
+    if(numRanges) {
+        free(tower->ranges);
+        tower->ranges = malloc(sizeof(tower->ranges[0]) * numRanges);
+        memcpy(tower->ranges, ranges, sizeof(tower->ranges[0]) * numRanges);
+    }
     tower->numRanges = numRanges;
 }
 
@@ -185,8 +189,7 @@ void attemptShot(tower_t *tower) {
         int24_t lastEnemyDist = game.enemyOffset.fp.iPart - enemies[game.numEnemies - 1].offset;
                         
 
-        // Debug stuff
-        // TODO: remove
+        // Debug stuff //temp
         /*dbg_sprintf(dbgout, "Enemies: [");
         for(i = 0; i < game.numEnemies; i++) {
             dbg_sprintf(dbgout, "(%u, %i, %u),", enemies[i].offset, game.enemyOffset.fp.iPart - enemies[i].offset, enemies[i].health);

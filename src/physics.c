@@ -19,7 +19,6 @@
 
 extern uint24_t ticks;
 
-// TODO: finish pseudocoding
 void processPhysics(void) {
     int i;
     // Advance the enemy offset
@@ -66,9 +65,9 @@ void processPhysics(void) {
 }
 
 void resetTickTimer(void) {
-    timer_Control = TIMER1_DISABLE;
+    timer_Control &= ~TIMER1_ENABLE;
     timer_1_Counter = 0;
-    timer_Control = TIMER1_ENABLE | TIMER1_32K | TIMER1_UP;
+    timer_Control |= TIMER1_ENABLE | TIMER1_32K | TIMER1_UP;
 
     ticks = 0;
 }

@@ -13,7 +13,7 @@
 
 #include "tower.h"
 
-void drawTowers(uint24_t csrX, uint8_t csrY);
+void drawTowers(uint24_t csrX, uint8_t csrY, uint8_t selectedIndex);
 void drawPath(void);
 void drawUI(void);
 void drawPathBuffer(void);

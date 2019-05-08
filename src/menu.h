@@ -20,4 +20,7 @@ void highScores(void);
 void towerEdit(tower_t *tower);
 archetype_t selectTowerType(void);
 
+void initCursor(void);
+void updateCursor(void);
+
 #endif

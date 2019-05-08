@@ -39,6 +39,8 @@ typedef struct lineSeg {
     uint8_t y2;
 } lineSeg_t;
 
+typedef struct lineSeg rectangle_t;
+
 uint24_t distBetween(uint24_t x1, uint8_t y1, uint24_t x2, uint8_t y2);
 bool ptInsideCirc(circle_t *c, uint24_t x, uint8_t y);
 bool circCollidesSeg(circle_t *c, lineSeg_t *l, lineSeg_t *inside);
@@ -52,10 +54,13 @@ uint8_t clipString(char* str, int24_t width);
 void setBit(uint8_t* array, uint24_t offset, bool value);
 bool getBit(uint8_t* array, uint24_t offset);
 
-// Insert the bit value into the (offset)th bit of array[index], shifting the bit that was there
+void shiftBitsRight(uint8_t* array, uint8_t size);
+void shiftBitsLeft(uint8_t* array, uint8_t size);
+
+// Insert the bit value into the (index)th bit of array, shifting the bit that was there
 // and all others after it up until array[size] to the right by one
-void insertBoolArray(bool value, char* array, uint8_t index, uint8_t offset, uint8_t size);
-// Delete the (offset)th bit of array[index], shifting all bits after it up until array[size] left by one
-void removeBoolArray(char* array, uint8_t index, uint8_t offset, uint8_t size);
+void insertBoolArray(bool value, uint8_t* array, uint8_t index, uint8_t size);
+// Delete the (index)th bit of array, shifting all bits after it up until array[size] left by one
+void removeBoolArray(uint8_t* array, uint8_t index, uint8_t size);
 
 #endif

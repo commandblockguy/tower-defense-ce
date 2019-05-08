@@ -124,7 +124,6 @@ void reader(readerFile_t *file) {
 // Returns the index of the first element of the array at ptr, which has n elements of size size,
 // whose first three bytes are greater than or equal to target
 // Should operate in O(log(n)) time (TODO: confirm)
-// TODO: move to util, use with firstEnemyAfter
 uint24_t firstAfter(uint24_t target, void *ptr, uint24_t n, size_t size) {
     int24_t low = 0, high = n;
     //dbg_sprintf(dbgout, "First element after %u in %p:\n", target, ptr);

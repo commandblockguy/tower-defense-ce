@@ -12,6 +12,7 @@
 #include <string.h>
 
 #define PATH_WIDTH 10
+#define REGULATE_ENDPOINTS
 
 typedef struct {
     uint24_t posX;
@@ -28,7 +29,7 @@ void resetPathBuffer(void);
 int8_t updatePath(void);
 void initBuffer(void);
 void reverseBuffer(void);
-bool checkPath(void);
+bool checkPath(bool buffer);
 bool checkBufPoint(uint8_t index);
 bool checkBufSegment(uint8_t index);
 

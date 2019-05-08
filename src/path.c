@@ -44,7 +44,7 @@ void initBuffer(void) {
     }
 
     bufSize = game.numPathPoints;
-    // TODO: error bits
+    checkPath(true);
 }
 
 void reverseBuffer(void) {
@@ -72,15 +72,6 @@ int8_t updatePath(void) {
     uint8_t lastY = pathBufY[0];
     int i;
 
-    //TODO: Verify that the path is valid, e.g.
-    //  no crossings - maybe enforce this while editing?
-    //  no sharp angles (>90)
-    //  minimum line length (angle (in circleints) / 8)
-
-    // These conditions should be shown using red lines in the editor
-
-    // If invalid, return a positive number
-
     // Handle memory stuff
     free(path);
     path = malloc(sizeof(path[0]) * bufSize);
@@ -100,16 +91,43 @@ int8_t updatePath(void) {
     return 0;
 }
 
-// TODO: returns true if path is valid
-bool checkPath(void) {
+// returns true if path is valid
+bool checkPath(bool buffer) {
     uint8_t i;
+    bool foundError = false;
+    bool valid;
     // Initialize the buffer to mirror the path
-    initBuffer();
+    if(!buffer)
+        initBuffer();
     // Check each point
-    for(i = 0; i < bufSize; i++) {
+    for(i = 0; i < bufSize - 1; i++) {
         // Set error bits
+        valid = checkBufPoint(i);
+        setBit(pathBufPtErr, i, !valid);
+        if(!valid) {
+            foundError = true;
+            dbg_sprintf(dbgout, "Invalid point %u\n", i);
+        }
+
+        valid = checkBufSegment(i);
+        setBit(pathBufSegErr, i, !valid);
+        if(!valid) {
+            foundError = true;
+            dbg_sprintf(dbgout, "Invalid segment %u\n", i);
+        }
     }
-    return true;
+
+    // Get the last segment
+    valid = checkBufPoint(i);
+    setBit(pathBufPtErr, i, !valid);
+    if(!valid) {
+        foundError = true;
+        dbg_sprintf(dbgout, "Invalid last point %u\n", i);
+    }
+
+    //dbg_sprintf(dbgout, "foundError: %u\n", foundError);
+
+    return foundError;
 }
 
 
@@ -137,7 +155,7 @@ bool checkBufSegment(uint8_t index) {
     uint8_t i;
     lineSeg_t seg;
 
-    dbg_sprintf(dbgout, "Checking segment %u\n", index);
+    //dbg_sprintf(dbgout, "Checking segment %u\n", index);
 
     seg.x1 = pathBufX[index];
     seg.x2 = pathBufX[index+1];
@@ -146,11 +164,14 @@ bool checkBufSegment(uint8_t index) {
 
     // Special case if last point
     if(index == bufSize - 1) {
-        return false;
+        return true;
     }
     // Check if the segment overlaps any other line
-    for(i = 0; i < bufSize - 2; i++) {
+    for(i = 0; i < bufSize - 1; i++) {
         lineSeg_t other;
+
+        if(index - 1 <= i && i <= index + 1) continue;
+
         other.x1 = pathBufX[i];
         other.x2 = pathBufX[i+1];
         other.y1 = pathBufY[i];
@@ -159,6 +180,7 @@ bool checkBufSegment(uint8_t index) {
         if(linesCollide(&seg, &other))
             return false;
     }
+    //dbg_sprintf(dbgout, "Line is not colliding\n");
     // Check if the segment overlaps any tower
     for(i = 0; i < NUM_TOWERS; i++) {
         circle_t c;
@@ -170,7 +192,7 @@ bool checkBufSegment(uint8_t index) {
             return false;
     }
 
-    dbg_sprintf(dbgout, "Segment's fine.\n");
+    //dbg_sprintf(dbgout, "Segment's fine.\n");
 
     return true;
 }

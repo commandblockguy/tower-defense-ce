@@ -47,12 +47,16 @@ bool enemyPos(enemy_t *enemy, uint24_t *x, uint8_t *y) {
     return true;
 }
 
-// TODO: implement some sort of gradual increase in difficulty
+// TODO: BLOCKING: implement some sort of gradual increase in difficulty
 void spawnEnemies(uint24_t round) {
+    const uint8_t minSpacing = 5;
+    const uint8_t maxSpacing = 64;
     int i;
+    uint24_t distance = 0;
     uint8_t enemySpacing = 15; // temp
+    // minSpacing + randInt(0, )
 
-    game.livingEnemies = game.numEnemies = 50; // temp
+    game.livingEnemies = game.numEnemies = 30 + 10 * game.waveNumber;
     
     // Handle memory
     free(enemies);
@@ -60,6 +64,8 @@ void spawnEnemies(uint24_t round) {
 
     for(i = 0; i < game.numEnemies; i++) {
         enemy_t *enemy = &enemies[i];
+
+        distance += abs(random() - random()) * (1 + maxSpacing - minSpacing) + minSpacing;
 
         enemy->offset = i * enemySpacing;
 

@@ -14,6 +14,7 @@
 #include <debug.h>
 
 #include "gfx/colors.h"
+#include "gfx/gfx_group.h"
 #include "globals.h"
 #include "util.h"
 #include "enemy.h"
@@ -24,13 +25,51 @@
 
 // TODO: add some sort of fancy background
 
-void drawTowers(uint24_t csrX, uint8_t csrY) {
+const gfx_sprite_t *tower_sprites[] = {
+    tower_standard, // STANDARD
+    tower_standard, // TODO: BLOCKING: implement SNIPER
+    tower_burst // BURST
+};
+
+// TODO: show XP / level up
+void drawTowers(uint24_t csrX, uint8_t csrY, uint8_t selectedIndex) {
     // Loop through all towers
     int i;
     for(i = 0; i < NUM_TOWERS; i++) {
         tower_t *tower = &towers[i];
         if(csrX == -1) {
-            drawTower(tower, tower->posX, tower->posY, 1, false);
+            // We are in edit mode
+            circle_t c;
+            lineSeg_t ls1, ls2;
+            bool showRange = false;
+
+            if(selectedIndex != (uint8_t)-1) {
+
+                c.x = tower->posX;
+                c.y = tower->posY;
+                c.radius = tower->range;
+
+                if(selectedIndex + 1 != bufSize) {
+
+                    ls1.x1 = pathBufX[selectedIndex];
+                    ls1.x2 = pathBufX[selectedIndex+1];
+                    ls1.y1 = pathBufY[selectedIndex];
+                    ls1.y2 = pathBufY[selectedIndex+1];
+
+                    showRange = circCollidesSeg(&c, &ls1, NULL);
+                }
+
+                if(selectedIndex) {
+                    ls2.x1 = pathBufX[selectedIndex-1];
+                    ls2.x2 = pathBufX[selectedIndex];
+                    ls2.y1 = pathBufY[selectedIndex-1];
+                    ls2.y2 = pathBufY[selectedIndex];
+
+                    showRange |= circCollidesSeg(&c, &ls2, NULL);
+                }
+            }
+
+            drawTower(tower, tower->posX, tower->posY, 1, showRange);
             // Skip the distance check if it's not necessary
             continue;
         }
@@ -43,17 +82,15 @@ void drawTowers(uint24_t csrX, uint8_t csrY) {
     }
 }
 
-
 // Range: true if the tower range should be displayed
 void drawTower(tower_t *tower, uint24_t x, uint8_t y, uint8_t scale, bool range) {
     int i;
-    // TODO: rewrite using the actual sprites
-    gfx_SetColor(tower->cooldown <= 5 ? RED : BLACK/*temp*/);
-    gfx_Circle(x, y, scale * 8);
+    gfx_sprite_t *sprite = tower_sprites[tower->archetype];
+    gfx_ScaledTransparentSprite_NoClip(sprite, x - sprite->width * scale / 2, y - sprite->height * scale / 2, scale, scale);
 
     // Draw the tower range
     if(range) {
-        gfx_SetColor(RED);
+        gfx_SetColor(HIGHLIGHT_COLOR);
         gfx_Circle(x, y, tower->range);
     }
 
@@ -70,14 +107,41 @@ void drawPath(void) {
     int i;
 
     gfx_SetColor(PATH_COLOR);
+
     for(i = 1; i < game.numPathPoints; i++) {
-        gfx_Line(path[i].posX, path[i].posY, path[i - 1].posX, path[i - 1].posY);
+        int points[8];
+        int24_t x1 = path[i].posX;
+        int24_t y1 = path[i].posY;
+        int24_t x2 = path[i-1].posX;
+        int24_t y2 = path[i-1].posY;
+
+
+        // Get the length of the line segment
+        /*int24_t length = distBetween(x1, y1, x2, y2);
+
+        // Find the offset from the actual path to the edge of the path
+        int24_t offsetX = (PATH_WIDTH / 2) * (y2 - y1) / length;
+        int24_t offsetY = (PATH_WIDTH / 2) * (x2 - x1) / length;
+
+        //dbg_sprintf(dbgout, "(%i, %i)\n", offsetX, offsetY);
+
+        // y u so slow???
+        points[0] = x1 - offsetX; points[1] = y1 - offsetY;
+        points[2] = x2 - offsetX; points[3] = y2 - offsetY;
+        points[4] = x2 + offsetX; points[5] = y2 + offsetY;
+        points[6] = x1 + offsetX; points[7] = y1 + offsetY;
+        gfx_Polygon(points, 4);*/
+        //gfx_FillTriangle_NoClip(, , , );
+        //gfx_FillTriangle_NoClip(, , );
+
+        gfx_Line(x1, y1, x2, y2);
     }
 }
 
 void drawPathBuffer(void) {
     int i;
     gfx_SetColor(PATH_COLOR);
+
     // Loop through all lines
     // TODO: thicc-er lines
     for(i = 0; i < bufSize - 1; i++) {
@@ -96,6 +160,13 @@ void drawPathBuffer(void) {
         } else {
             gfx_Line(pathBufX[i], pathBufY[i], pathBufX[i+1], pathBufY[i+1]);
         }
+    }
+
+    // draw the circle at the last point
+    if(getBit(pathBufPtErr, i)) {
+        gfx_SetColor(RED);
+        gfx_Circle(pathBufX[i], pathBufY[i], 5);
+        gfx_SetColor(PATH_COLOR);
     }
 }
 
@@ -119,15 +190,18 @@ void drawUI(void) {
 
         gfx_SetTextXY(1, LCD_HEIGHT - (F_BTN_HEIGHT + TEXT_HEIGHT) / 2);
 
-        if(state < 255 / 3) {
+        if(state < 255 / 4) {
             gfx_PrintString("Wave ");
             gfx_PrintUInt(game.waveNumber + 1, 3);
-        } else if(state < 255 / 3 * 2) {
+        } else if(state < 255 / 4 * 2) {
             gfx_PrintUInt(game.numEnemies, 3);
             gfx_PrintString(" enemies");
-        } else {
+        } else if(state < 255 / 4 * 3) {
             gfx_PrintString("Spacing: ");
             gfx_PrintUInt(enemies[game.numEnemies - 1].offset / (game.numEnemies - 1), 2);
+        } else {
+            gfx_PrintString("Lives: ");
+            gfx_PrintUInt(game.lives, 2);
         }
 
         state++;
@@ -194,10 +268,11 @@ void drawEnemies(void) {
 
         if(enemyPos(enemy, &x, &y)) {
             // Enemy is on screen and should be displayed
-            // TODO: draw sprite
-            gfx_SetColor(BLACK);
-            gfx_FillCircle(x, y, 5);
-            // TODO: healthbar
+            // draw sprite
+            //gfx_SetColor(BLACK);
+            //gfx_FillCircle(x, y, 5);
+            gfx_TransparentSprite(alien, x - alien->width / 2, y - alien->height / 2);
+            // TODO: health indication
         }
     }
 }

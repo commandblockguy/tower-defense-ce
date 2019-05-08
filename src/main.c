@@ -32,21 +32,18 @@
 #include "menu.h"
 #include "reader.h"
 
-extern const readerFile_t rf_test; // TODO: temp
-
 const uint8_t NUM_LIVES     = 25;
-const uint8_t CSR_SPEED     = 3;
 const uint8_t TOWER_DIST    = 48;
 const uint24_t XP_DIST      = LCD_HEIGHT * 10;
 const uint8_t BASE_XP       = 3;
 
 void main(void);
 int24_t play(bool resume);
-void saveAppvar(void);
+bool saveAppvar(void);
+bool loadAppvar(void);
 
 extern uint16_t pathBufX[255]; // These are used when editing the path
 extern uint8_t pathBufY[255];
-extern char pathBufErr[32]; // Each bit corresponds to whether the segment following that point has an error
 extern uint8_t bufSize; // Number of elements in the path buffer
 extern pathPoint_t *path; // Path rendering is done with this
 
@@ -59,9 +56,15 @@ uint8_t  csrY = LCD_HEIGHT / 2;
 uint24_t ticks;
 
 void main(void) {
-    dbg_sprintf(dbgout, "\n\nProgram Started\n");
+    char temp[5] = {0, 0, 0, 0, 0};
+    dbg_sprintf(dbgout, "\n\nTower Defense %s\n", VERSION_STRING);
     // Seed the RNG
     srand(rtc_Time());
+
+    //temp
+    //insertBoolArray(0, pathBufPtErr, 0, 0, 0);
+
+    ti_CloseAll();
 
     // Set up graphics
     gfx_Begin();
@@ -84,9 +87,9 @@ void main(void) {
 // Returns the score, or -1 if exiting due to clear being pressed
 int24_t play(bool resume) {
     // Actual game stuff
-    int i;
+    uint8_t i;
     bool carry = false;
-    uint8_t selectedIndex = 0;
+    uint8_t selectedIndex = -1;
     uint24_t carryOrigX;
     uint8_t carryOrigY;
     // Used for sliding popups down
@@ -94,9 +97,27 @@ int24_t play(bool resume) {
 
     bool updatedPath = true; // True if the player has changed the path
 
+    initCursor();
+
     if(resume) {
-        // TODO: resume game
+        uint8_t i;
+        // Resume game
+
+        // Load the appvar
+        if(!loadAppvar()) {
+            dbg_sprintf(dbgerr, "Failed to load appvar\n");
+            return -1;
+        }
+
+        // Re-calculate tower ranges
+        for(i = 0; i < NUM_TOWERS; i++) {
+            calcTowerRanges(&towers[i]);
+        }
+
+        // Reset ticks passed
+        resetTickTimer();
     } else {
+        // Start new game
         initTowers();
 
         // Reset game variables
@@ -128,7 +149,24 @@ int24_t play(bool resume) {
                 // Discard path without saving
                 game.status = PRE_WAVE;
             } else {
+                uint8_t i;
+
+                // Free tower ranges to make things easier later
+                for(i = 0; i < NUM_TOWERS; i++) {
+                    if(towers[i].numRanges)
+                        free(towers[i].ranges);
+                    towers[i].ranges = NULL;
+                }
+
+                // Save the game so it can be resumed later
                 saveAppvar();
+
+                // Handle memory stuff
+                free(enemies);
+                enemies = NULL;
+                free(path);
+                path = NULL;
+
                 return -1;
             }
         }
@@ -157,16 +195,16 @@ int24_t play(bool resume) {
         // Draw path
         if(game.status == PATH_EDIT) {
             // Don't enlarge towers if we are editing paths
-            drawTowers(-1, -1);
+            drawTowers(-1, -1, selectedIndex);
             // Draw the path buffer
             drawPathBuffer();
         } else {
             // Draw the regular path
             drawPath();
-            drawTowers(csrX, csrY);
+            drawTowers(csrX, csrY, -1);
         }
         // Draw enemies
-        if(game.status == WAVE) {
+        if(game.status == WAVE || game.status == PAUSED) {
             drawEnemies();
         }
         // Draw UI
@@ -187,19 +225,8 @@ int24_t play(bool resume) {
         // Check if any F keys are pressed
         fKey = kb_Data[1];
 
-        // Move the cursor around
-        // TODO: acceleration?
-        //  (I always say this and then never do it)
-        if(kb_IsDown(kb_KeyLeft )) csrX -= CSR_SPEED;
-        if(kb_IsDown(kb_KeyRight)) csrX += CSR_SPEED;
-        if(kb_IsDown(kb_KeyUp   )) csrY -= CSR_SPEED;
-        if(kb_IsDown(kb_KeyDown )) csrY += CSR_SPEED;
-
-        // Check if the cursor went offscreen
-        if(csrX > 500)        csrX += LCD_WIDTH ; // hacky check for underflow
-        if(csrX > LCD_WIDTH ) csrX -= LCD_WIDTH ;
-        if(csrY > 250)        csrY += LCD_HEIGHT; // hacky check for  overflow
-        if(csrY > LCD_HEIGHT) csrY -= LCD_HEIGHT;
+        // Handle cursor
+        updateCursor();
 
         // Handle alpha presses
         if(kb_IsDown(kb_KeyAlpha) && game.status == PATH_EDIT && !carry) {
@@ -227,7 +254,7 @@ int24_t play(bool resume) {
 
         // Handle del presses
         if(kb_IsDown(kb_KeyDel) && game.status == PATH_EDIT && !carry) {
-            int index;
+            int i;
             circle_t c;
 
             // Make a circle around the cursor
@@ -236,19 +263,28 @@ int24_t play(bool resume) {
             c.radius = CLICK_RADIUS;
 
             // Check which point we are over
-            for(index = 0; index < bufSize; index++) {
+            for(i = 0; i < bufSize; i++) {
                 // Loop through all points until one is in the circle
-                if(ptInsideCirc(&c, pathBufX[index], pathBufY[index])) {
+                if(ptInsideCirc(&c, pathBufX[i], pathBufY[i])) {
                     // Select that index
-                    memcpy(&pathBufX[index], &pathBufX[index+1], sizeof(pathBufX[0]) * (bufSize - index - 1));
-                    memcpy(&pathBufY[index], &pathBufY[index+1], sizeof(pathBufY[0]) * (bufSize - index - 1));
-                    //TODO: shift all the error checks over by a bit
+                    memcpy(&pathBufX[i], &pathBufX[i+1], sizeof(pathBufX[0]) * (bufSize - i - 1));
+                    memcpy(&pathBufY[i], &pathBufY[i+1], sizeof(pathBufY[0]) * (bufSize - i - 1));
+
+                    // Shift all the error checks over by a bit
+                    removeBoolArray(pathBufSegErr, i, bufSize);
+                    removeBoolArray(pathBufPtErr, i, bufSize);
+
+                    // Check if the newly created line and its adjacent points are valid
+                    // If not, set error bits
+                    setBit(pathBufSegErr, i-1, !checkBufSegment(i-1));
+
+                    setBit(pathBufPtErr, i, !checkBufPoint(i));
+                    setBit(pathBufPtErr, i-1, !checkBufPoint(i-1));
+
                     bufSize--;
                     break;
                 }
             }
-            //TODO: Check if the newly created line and its adjacent points are valid
-            // If not, set error bits
         }
 
         // Handle 2nd presses
@@ -262,7 +298,6 @@ int24_t play(bool resume) {
             if(game.status == PATH_EDIT) {
                 if(carry) {
                     // Try to drop the point
-                    //TODO: If position is valid, reset carry
                     if(selectedIndex == 0 || selectedIndex == bufSize + 1) {
                         // If the carried point is the start or end point, it should be on an edge
                     } else {
@@ -270,8 +305,7 @@ int24_t play(bool resume) {
                     }
                     // Reset carry
                     carry = false;
-                    //TODO: Check if the point, the two adjacent lines, and the two adjacent points are still valid
-                    // If not, set the error bits
+                    selectedIndex = -1;
                     // Skip the rest of the click check
                     // I know, bad style or whatever
                     goto clickSkip;
@@ -280,6 +314,7 @@ int24_t play(bool resume) {
                 // Check if buffer would overflow
                 if(bufSize >= 250) {
                     // TODO: display some message to the player
+                    dbg_sprintf(dbgout, "Path too long.\n");
                 } else {
                     // Make a circle around the cursor
                     circ.x = csrX;
@@ -308,7 +343,9 @@ int24_t play(bool resume) {
                             pathBufX[j] = pathBufX[j - 1];
                             pathBufY[j] = pathBufY[j - 1];
                         }
-                        // TODO: shift all error bits over by one
+                        // Shift all error bits over by one
+                        insertBoolArray(0, pathBufPtErr, i, bufSize);
+                        insertBoolArray(0, pathBufSegErr, i, bufSize);
 
                         // Increment the buffer size
                         bufSize++;
@@ -319,7 +356,7 @@ int24_t play(bool resume) {
                     }
                 }
             } else {
-                int i;
+                uint8_t i;
                 // Check if we are over a tower
                 // Scan through all towers
                 for(i = 0; i < NUM_TOWERS; i++) {
@@ -357,6 +394,7 @@ int24_t play(bool resume) {
             pathBufX[selectedIndex] = csrX;
             // If the point is over the buttons, clip it to inside the play area
             pathBufY[selectedIndex] = csrY > LCD_HEIGHT - F_BTN_HEIGHT ? LCD_HEIGHT - F_BTN_HEIGHT : csrY;
+            #ifdef REGULATE_ENDPOINTS
             if(selectedIndex == 0 || selectedIndex == bufSize - 1) {
                 // TODO: replace with casting a point out of the middle?
                 //  Would be less confusing, but slower
@@ -384,6 +422,7 @@ int24_t play(bool resume) {
                     pathBufY[selectedIndex] = csrY;
                 }
             }
+            #endif
 
             // Check point and segments
             // Check returns true if OK, but error bits are true if *not* OK
@@ -401,14 +440,20 @@ int24_t play(bool resume) {
         switch(game.status) {
             case(PRE_WAVE):
                 if(fKey == kb_Trace || fKey == kb_Graph) {
+                    uint8_t i;
+                    bool validPath = true;
                     // Start the wave
                     if(updatedPath) {
                         int i;
-                        updatedPath = false;
 
                         // Recalculate tower ranges
                         for(i = 0; i < NUM_TOWERS; i++) {
                             calcTowerRanges(&towers[i]);
+                        }
+
+                        validPath = !checkPath(false);
+                        if(validPath) {
+                            updatedPath = false;
                         }
 
                         // Compute XP amount
@@ -417,17 +462,23 @@ int24_t play(bool resume) {
                         dbg_sprintf(dbgout, "XP amount is %u\n", game.xpAmt);
                     }
 
-                    // Reset enemy progression
-                    game.enemyOffset.combined = 0;
+                    if(validPath) {
 
-                    // Reset all towers' cooldowns
-                    for(i = 0; i < NUM_TOWERS; i++) {
-                        towers[i].cooldown = 0;
+                        // Reset enemy progression
+                        game.enemyOffset.combined = 0;
+
+                        // Reset all towers' cooldowns
+                        for(i = 0; i < NUM_TOWERS; i++) {
+                            towers[i].cooldown = 0;
+                        }
+
+                        resetTickTimer();
+
+                        game.status = WAVE;
+                    } else {
+                        // TODO: inform the player the path is invalid
+                        dbg_sprintf(dbgout, "Path is invalid\n");
                     }
-
-                    resetTickTimer();
-
-                    game.status = WAVE;
                 }
                 if(fKey == kb_Zoom) {
                     // Edit path
@@ -457,6 +508,8 @@ int24_t play(bool resume) {
                         break;
                     case(kb_Zoom):
                         // Clear the buffer
+                        carry = false;
+                        selectedIndex = -1;
                         resetPathBuffer();
                         break;
                     case(kb_Trace):
@@ -481,16 +534,99 @@ int24_t play(bool resume) {
             } while(kb_Data[1]);
         }
     }
+
+    // Handle memory stuff
+    free(enemies);
+    enemies = NULL;
+    free(path);
+    path = NULL;
+
+    for(i = 0; i < NUM_TOWERS; i++) {
+        free(towers[i].ranges);
+        towers[i].ranges = NULL;
+    }
+
+    // Delete save appvar
+    ti_Delete(APPVAR);
+
     return game.score;
 }
 
-// TODO: implement
-void saveAppvar(void) {
+// Return true if success
+bool saveAppvar(void) {
+    ti_var_t slot;
+
+    // Open the file
+    slot = ti_Open(APPVAR, "w");
+
+    if(!slot) return false;
+
     // Save game struct to an appvar
+    ti_Write(&game, sizeof(game), 1, slot);
 
     // Save path
-    // Save enemies
+    ti_Write(path, sizeof(path[0]), game.numPathPoints, slot);
 
-    // Free path
-    // Free enemies
+    // Save enemies
+    ti_Write(enemies, sizeof(enemies[0]), game.numEnemies, slot);
+
+    // Save towers
+    ti_Write(towers, sizeof(towers[0]), NUM_TOWERS, slot);
+
+    ti_Close(slot);
+
+    return true;
+}
+
+bool appvarExists(void) {
+    ti_var_t slot;
+
+    // Open the file
+    slot = ti_Open(APPVAR, "r");
+
+    ti_Close(slot);
+
+    dbg_sprintf(dbgout, "slot %u\n", slot);
+
+    if(!slot) return false;
+
+    return true;
+}
+
+bool loadAppvar(void) {
+    ti_var_t slot;
+
+    // Open the file
+    slot = ti_Open(APPVAR, "r");
+
+    if(!slot) return false;
+
+    // Read game struct
+    ti_Read(&game, sizeof(game), 1, slot);
+
+    // Allocate memory
+    free(path);
+    free(enemies);
+    path = NULL;
+    enemies = NULL;
+    dbg_sprintf(dbgout, "freed p+e on load\n");
+    path = malloc(sizeof(path[0]) * game.numPathPoints);
+    enemies = malloc(sizeof(enemies[0]) * game.numEnemies);
+
+    // Read path
+    ti_Read(path, sizeof(path[0]), game.numPathPoints, slot);
+
+    // Read enemies
+    ti_Read(enemies, sizeof(enemies[0]), game.numEnemies, slot);
+
+    // Read towers
+    ti_Read(towers, sizeof(towers[0]), NUM_TOWERS, slot);
+
+    ti_Close(slot);
+
+    dbg_sprintf(dbgout, "save loaded\n");
+    dbg_sprintf(dbgout, "nE: %u, nP: %u\n", game.numEnemies, game.numPathPoints);
+    dbg_sprintf(dbgout, "e: %p, p: %p\n", enemies, path);
+
+    return true;
 }

@@ -13,6 +13,7 @@
 
 typedef struct {
     uint24_t offset; // distance from the first enemy
+    uint8_t maxHealth;
     uint8_t health; // 0 = dead
     uint8_t nextPoint; // The next point the enemy will pass
 } enemy_t;

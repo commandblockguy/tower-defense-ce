@@ -10,6 +10,7 @@
 
 #include <debug.h>
 
+#include "../globals.h"
 #include "../util.h"
 #include "../reader.h"
 #include "../gfx/colors.h"
@@ -21,7 +22,7 @@ const text_t rf_text_about[] = {
     {4, "Made by commandblockguy"},
     {5, "This program was written as an entry in"},
     {6, "Cemetech Contest 22."},
-    {7, "Ask on the topic thread:"},
+    {10, "Ask on the topic thread:"},
     {11, "https://ceme.tech/p278115"},
     {13, "Or, join the Cemetech Discord!"},
     {14, "https://discord.gg/DZbmraw"},
@@ -29,7 +30,8 @@ const text_t rf_text_about[] = {
     {17, "https://git.io/fjsOO"},
     {21, "Made by commandblockguy"},
     {22, "_iPhoenix_, for running CC22"},
-    {23, "MateoC, for the CE C toolchain"}
+    {23, "MateoC, for the CE C toolchain"},
+    {25, VERSION_STRING}
 };
 
 const fancyText_t rf_fancy_about[] = {
