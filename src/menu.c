@@ -29,6 +29,8 @@
 // from main.c
 int24_t play(bool resume);
 bool appvarExists(void);
+int8_t addScore(uint24_t score);
+void initScores(void);
 
 extern const char *statNames[];
 
@@ -36,9 +38,8 @@ extern const readerFile_t rf_howto;
 extern const readerFile_t rf_about;
 
 void mainMenu(void) {
-    int8_t selection = 0;
-    bool saveExists;
-    saveExists = appvarExists();
+    bool saveExists = appvarExists();
+    int8_t selection = !saveExists;
 
     // TODO: setup graphics
 
@@ -50,6 +51,7 @@ void mainMenu(void) {
     // Menu loop
     while(true) {
         uint8_t i;
+        const char* title = "tower defense CE";
 
         const uint8_t NUM_OPTIONS = 6;
         // Remember to update this next line too; the compiler is stupid
@@ -72,11 +74,11 @@ void mainMenu(void) {
 
         if(kb_IsDown(kb_KeyUp)) {
             while(kb_IsDown(kb_KeyUp)) kb_Scan();
-            if(--selection < 0) selection = NUM_OPTIONS - 1;
+            if(--selection < !saveExists) selection = NUM_OPTIONS - 1;
         }
         if(kb_IsDown(kb_KeyDown)) {
             while(kb_IsDown(kb_KeyDown)) kb_Scan();
-            if(++selection > NUM_OPTIONS - 1) selection = 0;
+            if(++selection > NUM_OPTIONS - 1) selection = !saveExists;
         }
 
         if(kb_IsDown(kb_Key2nd)) {
@@ -114,10 +116,28 @@ void mainMenu(void) {
         // the main menu open for an inordinate amount of time
         // ticks per pixel = distance from camera / speed 
         // x = (timer / ticks per pixel) % LCD_WIDTH
-        gfx_FillScreen(WHITE);
-        gfx_SetTextScale(1, 1);
+        gfx_FillScreen(HIGHLIGHT_COLOR);
+
+        // Since hills aren't happening on this timescale let's go for a pleasant green triangle instead
+        gfx_SetColor(GRASS);
+        gfx_FillRectangle(0, LCD_HEIGHT / 2, LCD_WIDTH, LCD_HEIGHT / 2);
+        gfx_FillTriangle(0, LCD_HEIGHT / 3, 0, LCD_HEIGHT / 2, LCD_WIDTH, LCD_HEIGHT / 2);
+        gfx_SetColor(BLACK);
+        gfx_Line(0, LCD_HEIGHT / 3, LCD_WIDTH, LCD_HEIGHT / 2 + 1);
+
+        gfx_ScaledTransparentSprite_NoClip(castle, 5, LCD_HEIGHT / 5, 3, 3);
+
+        // Path thing
+        gfx_SetColor(PATH_COLOR);
+        gfx_Line(5 + 3 * castle->width / 2, LCD_HEIGHT / 5 + 3 * castle->height, LCD_WIDTH / 2, LCD_HEIGHT);
+
+        gfx_SetTextScale(2, 2);
+        gfx_SetTextFGColor(WHITE);
+        gfx_PrintStringXY(title, (LCD_WIDTH - gfx_GetStringWidth(title)) / 2, 8);
 
         // Draw the options
+        gfx_SetTextScale(1, 1);
+        gfx_SetTextFGColor(BLACK);
         for(i = 0; i < NUM_OPTIONS; i++) {
             const uint8_t boxSpacing = 5;
             const uint8_t boxHeight = (2 * LCD_HEIGHT / 3 + boxSpacing) / NUM_OPTIONS - boxSpacing;
@@ -133,6 +153,7 @@ void mainMenu(void) {
 
             // TODO: sign colors
             if(i == selection) gfx_SetTextFGColor(HIGHLIGHT_COLOR);
+            else if(i == 0 && !saveExists) gfx_SetTextFGColor(LIGHT_GREY);
             else gfx_SetTextFGColor(BLACK);
 
             textWidth = gfx_GetStringWidth(options[i]);
@@ -147,12 +168,46 @@ void mainMenu(void) {
 }
 
 void highScores(void) {
-    //TODO: Display high scores
+    ti_var_t slot;
+    uint8_t i;
+    uint24_t scores[NUMSCORES];
+    const char* text_scores = "high scores";
+    uint8_t width;
+    // Display high scores
+
+    gfx_FillScreen(GRASS);
+
+    // Graphics stuff
+    gfx_SetTextFGColor(WHITE);
+    gfx_SetColor(WHITE);
+    gfx_SetTextScale(3, 3);
+    width = gfx_GetStringWidth(text_scores);
+    gfx_PrintStringXY(text_scores, (LCD_WIDTH - width) / 2, 16);
+    gfx_HorizLine((LCD_WIDTH - width) / 2, 16 + 3 * 8 - 2, width);
+    gfx_SetTextScale(1, 1);
 
     // Open high score appvar
+    initScores();
+    slot = ti_Open(SCOREVAR, "r");
+    if(!slot) return;
+
     // Read list of scores
+    ti_Read(scores, sizeof(scores[0]), NUMSCORES, slot);
+    ti_Close(slot);
+
     // Display names
+    for(i = 0; i < NUMSCORES; i++) {
+        gfx_PrintStringXY("#", LCD_WIDTH / 6, LCD_HEIGHT / 3 + 12 * i);
+        gfx_PrintUInt(i + 1, 1);
+        gfx_PrintString(": ");
+        gfx_PrintUInt(scores[i], 4);
+    }
+
+    gfx_BlitBuffer();
+
     // Wait for keypress
+    while(os_GetCSC());
+    while(!os_GetCSC());
 }
 
 void towerEdit(tower_t *tower) {
@@ -474,4 +529,56 @@ void updateCursor(void) {
 
     timer_2_Counter -= CSR_SPEED * dist;
     timer_Control |= TIMER2_ENABLE;
+}
+
+void loseScreen(uint24_t score) {
+    const char *text_lose = "You Lose!";
+    const char *text_score = "Score: ";
+    int8_t rank = addScore(score) + 1;
+
+    gfx_FillScreen(BLACK);
+
+    gfx_SetTextScale(3, 3);
+    gfx_SetTextFGColor(RED);
+    gfx_PrintStringXY(text_lose, (LCD_WIDTH - gfx_GetStringWidth(text_lose)) / 2, LCD_HEIGHT / 3 - 8 * 3 / 2);
+
+    gfx_SetTextScale(1, 1);
+    gfx_SetTextFGColor(WHITE);
+    gfx_PrintStringXY(text_score, (LCD_WIDTH - gfx_GetStringWidth(text_score) - gfx_GetStringWidth("000")) / 2, 2 * LCD_HEIGHT / 3);
+    gfx_PrintUInt(score, 3);
+
+    if(rank) {
+        const char *text_high = "New high score!";
+        const char *text_rank = "You are now ranked #";
+        gfx_PrintStringXY(text_high, (LCD_WIDTH - gfx_GetStringWidth(text_high)) / 2, 2 * LCD_HEIGHT / 3 + 10);
+        gfx_PrintStringXY(text_rank, (LCD_WIDTH - gfx_GetStringWidth(text_rank)) / 2, 2 * LCD_HEIGHT / 3 + 20);
+        gfx_PrintUInt(rank, 1);
+    }
+
+    gfx_BlitBuffer();
+
+    while(os_GetCSC());
+    while(!os_GetCSC());
+}
+
+void popup(char* str) {
+    uint8_t width;
+
+    gfx_SetTextScale(1, 1);
+    gfx_SetTextFGColor(BLACK);
+
+    width = gfx_GetStringWidth(str);
+
+    gfx_SetColor(WHITE);
+    gfx_FillRectangle((LCD_WIDTH - width - 10) / 2, (LCD_HEIGHT - 12) / 2, width + 10, 12);
+    gfx_SetColor(BLACK);
+    gfx_Rectangle((LCD_WIDTH - width - 10) / 2, (LCD_HEIGHT - 12) / 2, width + 10, 12);
+
+    gfx_PrintStringXY(str, (LCD_WIDTH - width) / 2, (LCD_HEIGHT - 8) / 2);
+
+    gfx_BlitRectangle(gfx_buffer, (LCD_WIDTH - width - 10) / 2, (LCD_HEIGHT - 12) / 2, width + 10, 12);
+
+    // Wait for key to be pressed
+    while(os_GetCSC());
+    while(!os_GetCSC());
 }

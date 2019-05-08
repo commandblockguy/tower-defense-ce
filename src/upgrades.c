@@ -82,7 +82,7 @@ const upgradeData_t upgradeData[3][3][4] = {
 const uint24_t statMultipliers[3][2] = {
     { // Standard stats
         3,  // Damage
-        30 // Range
+        25 // Range
     },
     { // Sniper stats
         15,  // Damage

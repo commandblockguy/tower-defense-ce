@@ -27,7 +27,7 @@
 
 const gfx_sprite_t *tower_sprites[] = {
     tower_standard, // STANDARD
-    tower_standard, // TODO: BLOCKING: implement SNIPER
+    tower_sniper, // BLOCKING
     tower_burst // BURST
 };
 

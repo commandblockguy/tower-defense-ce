@@ -365,6 +365,7 @@ void towerDamageEnemy(tower_t *tower, enemy_t *enemy) {
             tower->xp += game.xpAmt * enemy->health;
             enemy->health = 0;
             game.livingEnemies--;
+            game.score++;
            //dbg_sprintf(dbgout, "%u left.\n", game.livingEnemies);
         } else {
             // Shot will not kill enemy

@@ -24,6 +24,9 @@
 #define TPC TPS / ONE_SECOND
 
 #define APPVAR "TDefSave"
+#define SCOREVAR "TDefHigh"
+
+#define NUMSCORES 5
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 1
@@ -49,7 +52,7 @@ enum status {
 struct gameData {
     uint8_t lives;
     uint8_t status; // Whether the game is pre-wave, paused, or wave
-    int8_t score; // Number of enemies killed
+    int24_t score; // Number of enemies killed
     uint24_t waveNumber;
     
     uint8_t numPathPoints; // Equal to the number of points
@@ -60,6 +63,7 @@ struct gameData {
     ufix_t enemyOffset; // Distance that enemies have proceeded onto the map
     uint8_t xpAmt; // XP amount, dependant on the length of the path
 };
+
 // Global vars
 
 extern struct gameData game;

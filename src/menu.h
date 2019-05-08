@@ -23,4 +23,8 @@ archetype_t selectTowerType(void);
 void initCursor(void);
 void updateCursor(void);
 
+void loseScreen(uint24_t score);
+
+void popup(char* str);
+
 #endif

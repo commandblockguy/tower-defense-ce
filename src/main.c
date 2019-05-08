@@ -41,11 +41,15 @@ void main(void);
 int24_t play(bool resume);
 bool saveAppvar(void);
 bool loadAppvar(void);
+void initScores(void);
+int8_t addScore(uint24_t score);
 
 extern uint16_t pathBufX[255]; // These are used when editing the path
 extern uint8_t pathBufY[255];
 extern uint8_t bufSize; // Number of elements in the path buffer
 extern pathPoint_t *path; // Path rendering is done with this
+
+extern const readerFile_t rf_pathedit;
 
 struct gameData game; // Game global
 
@@ -313,7 +317,8 @@ int24_t play(bool resume) {
 
                 // Check if buffer would overflow
                 if(bufSize >= 250) {
-                    // TODO: display some message to the player
+                    // Display a message to the player
+                    popup("Path too long.");
                     dbg_sprintf(dbgout, "Path too long.\n");
                 } else {
                     // Make a circle around the cursor
@@ -476,7 +481,9 @@ int24_t play(bool resume) {
 
                         game.status = WAVE;
                     } else {
-                        // TODO: inform the player the path is invalid
+                        // Inform the player the path is invalid
+                        popup("Path is invalid.");
+                        popup("Press \"Edit Path\" to change it.");
                         dbg_sprintf(dbgout, "Path is invalid\n");
                     }
                 }
@@ -501,6 +508,9 @@ int24_t play(bool resume) {
             case(PATH_EDIT):
                 switch(fKey) {
                     default:
+                        break;
+                    case(kb_Yequ):
+                        reader(&rf_pathedit);
                         break;
                     case(kb_Window):
                         // Reverse the buffer
@@ -548,6 +558,8 @@ int24_t play(bool resume) {
 
     // Delete save appvar
     ti_Delete(APPVAR);
+
+    loseScreen(game.score);
 
     return game.score;
 }
@@ -609,7 +621,7 @@ bool loadAppvar(void) {
     free(enemies);
     path = NULL;
     enemies = NULL;
-    dbg_sprintf(dbgout, "freed p+e on load\n");
+    //dbg_sprintf(dbgout, "freed p+e on load\n");
     path = malloc(sizeof(path[0]) * game.numPathPoints);
     enemies = malloc(sizeof(enemies[0]) * game.numEnemies);
 
@@ -624,9 +636,61 @@ bool loadAppvar(void) {
 
     ti_Close(slot);
 
-    dbg_sprintf(dbgout, "save loaded\n");
-    dbg_sprintf(dbgout, "nE: %u, nP: %u\n", game.numEnemies, game.numPathPoints);
-    dbg_sprintf(dbgout, "e: %p, p: %p\n", enemies, path);
+    //dbg_sprintf(dbgout, "save loaded\n");
+    //dbg_sprintf(dbgout, "nE: %u, nP: %u\n", game.numEnemies, game.numPathPoints);
+    //dbg_sprintf(dbgout, "e: %p, p: %p\n", enemies, path);
 
     return true;
+}
+
+void initScores(void) {
+    ti_var_t slot;
+
+    slot = ti_Open(SCOREVAR, "r+");
+
+    if(!slot) {
+        uint8_t i;
+        const uint24_t zero = 0;
+        slot = ti_Open(SCOREVAR, "w");
+        if(!slot) dbg_sprintf(dbgerr, "Failed to open score file\n");
+        for(i = 0; i < NUMSCORES; i++) {
+            ti_Write(&zero, sizeof(zero), 1, slot);
+        }
+    }
+
+    ti_Close(slot);
+}
+
+// Add high scores to appvar
+int8_t addScore(uint24_t score) {
+    ti_var_t slot;
+    int8_t rank;
+    uint24_t scores[NUMSCORES];
+
+    slot = ti_Open(SCOREVAR, "r+");
+
+    if(!slot) {
+        initScores();
+        slot = ti_Open(SCOREVAR, "r+");
+    }
+
+    // Copy data and prepare to write from the beginning
+    ti_Read(scores, sizeof(scores[0]), NUMSCORES, slot);
+    ti_Rewind(slot);
+
+    // Move from worst to best score until the new score is worse than the selected one
+    for(rank = NUMSCORES - 1; rank >= 0 && score > scores[rank]; rank--) {
+        // Shift the score down one
+        if(rank < NUMSCORES - 1) scores[rank + 1] = scores[rank]; 
+    }
+
+    // Actually add the score
+    if(rank != NUMSCORES - 1) scores[rank + 1] = score;
+
+    // Sync the appvar back up
+    ti_Write(scores, sizeof(scores[0]), NUMSCORES, slot);
+
+    ti_Close(slot);
+
+    return rank == NUMSCORES - 1 ? -1 : rank + 1;
 }

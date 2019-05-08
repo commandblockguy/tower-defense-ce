@@ -196,9 +196,9 @@ void removeBoolArray(uint8_t* array, uint8_t index, uint8_t size) {
 
     uint8_t bytes = size / 8 - first + 1;
 
-    dbg_sprintf(dbgout, "array: %p, index: %u, size: %u\n", array, index, size);
-    dbg_sprintf(dbgout, "first: %u, offset: %u, copy: %u\n", first, offset, copy);
-    dbg_sprintf(dbgout, "%p, %u\n", &array[first], bytes);
+    //dbg_sprintf(dbgout, "array: %p, index: %u, size: %u\n", array, index, size);
+    //dbg_sprintf(dbgout, "first: %u, offset: %u, copy: %u\n", first, offset, copy);
+    //dbg_sprintf(dbgout, "%p, %u\n", &array[first], bytes);
 
     // Shift all bytes over
     shiftBitsLeft(&array[first], bytes);
