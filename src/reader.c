@@ -152,9 +152,8 @@ uint24_t firstAfter(uint24_t target, void *ptr, uint24_t n, size_t size) {
     //dbg_sprintf(dbgout, "First element after %u in %p:\n", target, ptr);
     while (low != high) {
         uint24_t mid = (low + high) / 2;
-        // You know that bit where I said "I sincerely hope this is the worst part of the code?"
-        // Well, this next line here is giving it a run for its money.
-        uint24_t val = *(uint24_t*)((uint24_t)ptr + mid * size);
+        uint24_t *ptr24 = ptr;
+        uint24_t val = ptr24[mid * size];
         //dbg_sprintf(dbgout, "Element %u (%p): %u\n", mid, (uint24_t)ptr + mid * size, val);
         if(val < target) {
             low = mid + 1;
