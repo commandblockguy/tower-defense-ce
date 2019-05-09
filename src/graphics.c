@@ -27,8 +27,21 @@
 
 const gfx_sprite_t *tower_sprites[] = {
     tower_standard, // STANDARD
-    tower_sniper, // BLOCKING
+    tower_sniper, // SNIPER
     tower_burst // BURST
+};
+
+const gfx_sprite_t *enemy_sprites[ENEMY_TYPES] = {
+    alien0,
+    alien1,
+    alien2,
+    alien3,
+    alien4,
+    alien5,
+    alien6,
+    alien7,
+    alien8,
+    alien9
 };
 
 // TODO: show XP / level up
@@ -267,11 +280,14 @@ void drawEnemies(void) {
         if(!enemy->health) continue;
 
         if(enemyPos(enemy, &x, &y)) {
+            // Not entirely sure how sprites work memory-wise
+            // I think this is correct?
+            gfx_sprite_t *sprite = enemy_sprites[enemy->type];
             // Enemy is on screen and should be displayed
             // draw sprite
             //gfx_SetColor(BLACK);
             //gfx_FillCircle(x, y, 5);
-            gfx_TransparentSprite(alien, x - alien->width / 2, y - alien->height / 2);
+            gfx_TransparentSprite(sprite, x - sprite->width / 2, y - sprite->height / 2);
             // TODO: health indication
         }
     }

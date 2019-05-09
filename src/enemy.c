@@ -70,9 +70,11 @@ void spawnEnemies(uint24_t round) {
 
         enemy->offset = distance;
 
-        enemy->health = 7 + 2 * game.waveNumber + randInt(0, 3) * game.waveNumber;
+        enemy->health = enemy->maxHealth = 7 + 2 * game.waveNumber + randInt(0, 3) * game.waveNumber;
 
         enemy->nextPoint = 0;
+
+        enemy->type = randInt(0, ENEMY_TYPES);
     }
 }
 

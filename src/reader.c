@@ -18,8 +18,27 @@
 #define LINE_HEIGHT 10
 #define SCREEN_LINES (LCD_HEIGHT / LINE_HEIGHT)
 
+// Compatibility for toolchain versions
+#ifndef kb_IsDown
+#define kb_IsDown(lkey) \
+(kb_Data[(lkey) >> 8] & (lkey))
+#endif
+
 uint24_t firstAfter(uint24_t target, void *ptr, uint24_t n, size_t size);
 void processLinkClick(link_t *link);
+
+const kb_lkey_t numKeys[10] = {
+    kb_Key0,
+    kb_Key1,
+    kb_Key2,
+    kb_Key3,
+    kb_Key4,
+    kb_Key5,
+    kb_Key6,
+    kb_Key7,
+    kb_Key8,
+    kb_Key9,
+};
 
 void reader(readerFile_t *file) {
     // The first line visible on the screen
@@ -93,25 +112,29 @@ void reader(readerFile_t *file) {
 
         // TODO: make it easier to click multiple links on one screen
         if(file->numLinks) {
-            i = firstAfter(currentLine, file->links, file->numLinks, sizeof(file->links[0]));
+            // The button the user needs to press to click the link
+            uint8_t number = 1;
 
-            if(i < file->numImages) {
+            for(i = firstAfter(currentLine, file->links, file->numLinks, sizeof(file->links[0]));
+                i < file->numLinks && file->links[i].line < currentLine + SCREEN_LINES; i++) {
                 link_t *link = &file->links[i];
 
-                uint8_t topPos = (link->line - currentLine) * LINE_HEIGHT;
-                uint8_t height = link->height * LINE_HEIGHT;
+                gfx_SetTextXY(1, (file->links[i].line - currentLine) * LINE_HEIGHT);
+                gfx_SetTextScale(1, 1);
+                gfx_SetTextFGColor(file->links[i].color);
+                gfx_PrintUInt(number, 1);
+                gfx_PrintChar('>');
 
-                gfx_SetColor(link->color);
-                gfx_VertLine(0, topPos, height);
-
-                // Check if link is pressed
-                if(kb_IsDown(kb_Key2nd)) {
+                // Check if the key is pressed
+                if(kb_IsDown(numKeys[number])) {
                     // Wait for key to be released
-                    while(kb_IsDown(kb_Key2nd)) kb_Scan();
+                    while(kb_IsDown(numKeys[number])) kb_Scan();
                     // Call the callback if it exists
                     if(link->callback)
                         (link->callback)(link->data);
                 }
+
+                number++;
             }
         }
 

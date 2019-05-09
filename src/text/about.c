@@ -23,15 +23,16 @@ const text_t rf_text_about[] = {
     {5, "This program was written as an entry in"},
     {6, "Cemetech Contest 22."},
     {10, "Ask on the topic thread:"},
-    {11, "https://ceme.tech/p278115"},
+    {11, "     https://ceme.tech/p278115"},
     {13, "Or, join the Cemetech Discord!"},
-    {14, "https://discord.gg/DZbmraw"},
+    {14, "     https://discord.gg/DZbmraw"},
     {16, "Github repository:"},
-    {17, "https://git.io/fjsOO"},
+    {17, "     https://git.io/fjsOO"},
     {21, "Made by commandblockguy"},
-    {22, "_iPhoenix_, for running CC22"},
-    {23, "MateoC, for the CE C toolchain"},
-    {25, VERSION_STRING}
+    {22, "epsilon5, for the enemy sprite"},
+    {23, "_iPhoenix_, for running CC22"},
+    {24, "MateoC, for the CE C toolchain"},
+    {26, VERSION_STRING}
 };
 
 const fancyText_t rf_fancy_about[] = {
@@ -47,7 +48,7 @@ const image_t rf_images_about[] = {
 const link_t rf_links_about[] = {
     {11, 1, HIGHLIGHT_COLOR, &viewQR, qr_topic},
     {14, 1, HIGHLIGHT_COLOR, &viewQR, qr_discord},
-    {17, 1, HIGHLIGHT_COLOR, &viewQR, NULL}, // TODO: qr_github
+    {17, 1, HIGHLIGHT_COLOR, &viewQR, qr_github}
 };
 
 const readerFile_t rf_about = {

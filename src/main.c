@@ -567,11 +567,17 @@ int24_t play(bool resume) {
 // Return true if success
 bool saveAppvar(void) {
     ti_var_t slot;
+    const uint8_t vMaj = VERSION_MAJOR;
+    const uint8_t vMin = VERSION_MINOR;
 
     // Open the file
     slot = ti_Open(APPVAR, "w");
 
     if(!slot) return false;
+
+    // Write version info
+    ti_Write(&vMaj, sizeof(vMaj), 1, slot);
+    ti_Write(&vMin, sizeof(vMin), 1, slot);
 
     // Save game struct to an appvar
     ti_Write(&game, sizeof(game), 1, slot);
@@ -607,11 +613,22 @@ bool appvarExists(void) {
 
 bool loadAppvar(void) {
     ti_var_t slot;
+    uint8_t vMaj;
+    uint8_t vMin;
 
     // Open the file
     slot = ti_Open(APPVAR, "r");
 
     if(!slot) return false;
+
+    // Read version info
+    ti_Read(&vMaj, sizeof(vMaj), 1, slot);
+    ti_Read(&vMin, sizeof(vMin), 1, slot);
+
+    if(vMaj != VERSION_MAJOR || vMin != VERSION_MINOR) {
+        dbg_sprintf(dbgout, "Save version mismatch\n");
+        return false;
+    }
 
     // Read game struct
     ti_Read(&game, sizeof(game), 1, slot);
@@ -672,6 +689,10 @@ int8_t addScore(uint24_t score) {
     if(!slot) {
         initScores();
         slot = ti_Open(SCOREVAR, "r+");
+    }
+
+    if(!slot) {
+        dbg_sprintf(dbgerr, "Failed to open scores file\n");
     }
 
     // Copy data and prepare to write from the beginning

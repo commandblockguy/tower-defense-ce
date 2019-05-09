@@ -14,6 +14,12 @@
 // Number of elements in an array
 #define elems(ARR) (sizeof(ARR)/sizeof(ARR[0]))
 
+// Compatibility for toolchain versions
+#ifndef kb_IsDown
+#define kb_IsDown(lkey) \
+(kb_Data[(lkey) >> 8] & (lkey))
+#endif
+
 struct FixedPoint {
 	uint8_t fPart;
 	uint16_t iPart;
